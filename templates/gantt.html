@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Gantt{% endblock %}
+{% block header_title %}Vista Gantt{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+
+  <!-- Filters -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-5 py-4 flex flex-wrap items-center gap-3">
+    <span class="text-sm font-semibold text-gray-700 flex-1">Línea de tiempo — 16 semanas</span>
+
+    <select id="gantt-status" name="status"
+            hx-get="/partials/gantt-chart"
+            hx-target="#gantt-container"
+            hx-swap="innerHTML"
+            hx-include="#gantt-status,#gantt-priority"
+            hx-trigger="change"
+            class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <option value="" {% if not filter_status %}selected{% endif %}>Todos los estados</option>
+      {% for s in ['Backlog','Pendiente','En Progreso','Bloqueado','Completado'] %}
+      <option value="{{ s }}" {% if filter_status == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+
+    <select id="gantt-priority" name="priority"
+            hx-get="/partials/gantt-chart"
+            hx-target="#gantt-container"
+            hx-swap="innerHTML"
+            hx-include="#gantt-status,#gantt-priority"
+            hx-trigger="change"
+            class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <option value="" {% if not filter_priority %}selected{% endif %}>Todas las prioridades</option>
+      {% for p in ['Alta','Media','Baja'] %}
+      <option value="{{ p }}" {% if filter_priority == p %}selected{% endif %}>{{ p }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- Gantt chart -->
+  <div id="gantt-container" class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    {% include "partials/gantt_chart.html" %}
+  </div>
+
+  <!-- Legend -->
+  <div class="flex flex-wrap gap-4 text-xs text-gray-500 px-1">
+    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-gray-400"></span>Backlog</span>
+    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-blue-500"></span>Pendiente</span>
+    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-yellow-400"></span>En Progreso</span>
+    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-red-500"></span>Bloqueado</span>
+    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-green-500"></span>Completado</span>
+  </div>
+
+</div>
+{% endblock %}

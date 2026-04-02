@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+{% block header_title %}Dashboard de Proyectos{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Stats cards -->
+  <div id="stats-container">
+    {% include "partials/stats_cards.html" %}
+  </div>
+
+  <!-- Toolbar -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm">
+    <div class="px-5 py-4 flex flex-wrap items-center gap-3 border-b border-gray-100">
+      <h2 class="text-sm font-semibold text-gray-700 flex-1">Proyectos</h2>
+
+      <!-- Filters -->
+      <select id="filter-status" name="status"
+              hx-get="/partials/project-table"
+              hx-target="#project-table-container"
+              hx-include="#filter-status,#filter-priority"
+              hx-trigger="change"
+              class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="">Todos los estados</option>
+        <option value="Backlog">Backlog</option>
+        <option value="Pendiente">Pendiente</option>
+        <option value="En Progreso">En Progreso</option>
+        <option value="Bloqueado">Bloqueado</option>
+        <option value="Completado">Completado</option>
+      </select>
+
+      <select id="filter-priority" name="priority"
+              hx-get="/partials/project-table"
+              hx-target="#project-table-container"
+              hx-include="#filter-status,#filter-priority"
+              hx-trigger="change"
+              class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="">Todas las prioridades</option>
+        <option value="Alta">Alta</option>
+        <option value="Media">Media</option>
+        <option value="Baja">Baja</option>
+      </select>
+
+      <!-- New project button -->
+      <button hx-get="/partials/project-form"
+              hx-target="#modal-content"
+              hx-swap="innerHTML"
+              class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-1.5 rounded-lg transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+        </svg>
+        Nuevo Proyecto
+      </button>
+    </div>
+
+    <!-- Project table -->
+    <div id="project-table-container">
+      {% include "partials/project_table.html" %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

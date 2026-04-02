@@ -1,0 +1,27 @@
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+    <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Proyectos</p>
+    <p class="mt-2 text-3xl font-bold text-gray-800">{{ stats.total }}</p>
+    <p class="mt-1 text-xs text-gray-400">registrados</p>
+  </div>
+
+  <div class="bg-white rounded-xl border border-yellow-200 shadow-sm p-5">
+    <p class="text-xs font-medium text-yellow-600 uppercase tracking-wide">En Progreso</p>
+    <p class="mt-2 text-3xl font-bold text-yellow-600">{{ stats.en_progreso }}</p>
+    <p class="mt-1 text-xs text-yellow-400">activos ahora</p>
+  </div>
+
+  <div class="bg-white rounded-xl border border-red-200 shadow-sm p-5">
+    <p class="text-xs font-medium text-red-600 uppercase tracking-wide">Bloqueados</p>
+    <p class="mt-2 text-3xl font-bold text-red-600">{{ stats.bloqueados }}</p>
+    <p class="mt-1 text-xs text-red-400">requieren atención</p>
+  </div>
+
+  <div class="bg-white rounded-xl border border-green-200 shadow-sm p-5">
+    <p class="text-xs font-medium text-green-600 uppercase tracking-wide">Completados</p>
+    <p class="mt-2 text-3xl font-bold text-green-600">{{ stats.completados_mes }}</p>
+    <p class="mt-1 text-xs text-green-400">este mes</p>
+  </div>
+
+</div>

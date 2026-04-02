@@ -1,0 +1,59 @@
+{% set num_weeks = weeks | length %}
+
+<div class="overflow-x-auto">
+  <div class="gantt-grid" style="grid-template-columns: 220px repeat({{ num_weeks }}, minmax(72px, 1fr)); min-width: {{ 220 + num_weeks * 72 }}px;">
+
+    <!-- Header: name column -->
+    <div class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-r border-gray-200 bg-gray-50 sticky left-0 z-10">
+      Proyecto
+    </div>
+    <!-- Header: week columns -->
+    {% for ws, we in weeks %}
+    <div class="px-2 py-3 text-center border-b border-r border-gray-200 bg-gray-50">
+      <div class="text-xs font-semibold text-gray-600">Sem {{ loop.index }}</div>
+      <div class="text-xs text-gray-400 mt-0.5">{{ ws.strftime('%d/%m') }}</div>
+    </div>
+    {% endfor %}
+
+    {% if gantt_data %}
+      {% for p in gantt_data %}
+      {% set row = loop.index + 1 %}
+
+      <!-- Row: project name (sticky) -->
+      <div class="px-4 py-0 border-b border-r border-gray-100 bg-white sticky left-0 z-10 flex items-center"
+           style="grid-column: 1; grid-row: {{ row }}; min-height: 40px;">
+        <button hx-get="/projects/{{ p.id }}"
+                hx-target="#modal-content"
+                hx-swap="innerHTML"
+                class="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors text-left truncate max-w-full">
+          <span class="font-mono text-xs text-gray-400 mr-1">{{ p.id }}</span>{{ p.name }}
+        </button>
+      </div>
+
+      <!-- Row: week cells (background grid) -->
+      {% for ws, we in weeks %}
+      <div class="border-b border-r border-gray-50 bg-white"
+           style="grid-column: {{ loop.index + 1 }}; grid-row: {{ row }}; min-height: 40px;">
+      </div>
+      {% endfor %}
+
+      <!-- Gantt bar (overlays the week cells) -->
+      {% if p.col_start and p.col_span > 0 %}
+      <div class="gantt-bar gantt-bar-{{ p.status | replace(' ', '-') | lower }} pointer-events-auto"
+           style="grid-column: {{ p.col_start }} / span {{ p.col_span }}; grid-row: {{ row }}; align-self: center; margin: 6px 3px; z-index: 5;"
+           title="{{ p.name }} | {{ p.status }} | {{ p.start_date or '?' }} → {{ p.end_date or '?' }} | {{ p.percent_complete }}%">
+        <div class="gantt-bar-progress" style="width: {{ p.percent_complete }}%"></div>
+        <span class="gantt-bar-label">{{ p.name }}</span>
+      </div>
+      {% endif %}
+
+      {% endfor %}
+    {% else %}
+    <div style="grid-column: 1 / {{ num_weeks + 2 }}; grid-row: 2;"
+         class="px-6 py-12 text-center text-gray-400 text-sm">
+      No hay proyectos con los filtros seleccionados.
+    </div>
+    {% endif %}
+
+  </div>
+</div>

@@ -1,0 +1,18 @@
+{% if decisions %}
+  <div class="space-y-2 mb-4">
+    {% for d in decisions %}
+    <div class="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3">
+      <p class="text-sm font-medium text-gray-800">{{ d.decision }}</p>
+      {% if d.context %}
+      <p class="text-xs text-gray-500 mt-1">{{ d.context }}</p>
+      {% endif %}
+      <div class="flex items-center gap-2 mt-2 text-xs text-gray-400">
+        {% if d.decided_by %}<span>{{ d.decided_by }}</span> · {% endif %}
+        <span>{{ d.created_at[:10] }}</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="text-sm text-gray-400 mb-3">Sin decisiones registradas.</p>
+{% endif %}

@@ -1,0 +1,154 @@
+{% set status_classes = {
+  'Backlog':    'bg-gray-100 text-gray-600',
+  'Pendiente':  'bg-blue-100 text-blue-700',
+  'En Progreso':'bg-yellow-100 text-yellow-700',
+  'Bloqueado':  'bg-red-100 text-red-700',
+  'Completado': 'bg-green-100 text-green-700',
+} %}
+{% set priority_classes = {
+  'Alta':  'bg-red-100 text-red-700',
+  'Media': 'bg-yellow-100 text-yellow-700',
+  'Baja':  'bg-green-100 text-green-700',
+} %}
+
+<div class="p-6 space-y-6">
+  <!-- Header -->
+  <div class="flex items-start justify-between">
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2 flex-wrap mb-1">
+        <span class="font-mono text-xs text-gray-400">{{ project.id }}</span>
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ status_classes.get(project.status, 'bg-gray-100 text-gray-600') }}">
+          {{ project.status }}
+        </span>
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ priority_classes.get(project.priority, 'bg-gray-100 text-gray-600') }}">
+          {{ project.priority }}
+        </span>
+      </div>
+      <h2 class="text-xl font-semibold text-gray-800">{{ project.name }}</h2>
+    </div>
+    <div class="flex items-center gap-2 ml-4 flex-shrink-0">
+      <button hx-get="/partials/project-form?id={{ project.id }}"
+              hx-target="#modal-content"
+              hx-swap="innerHTML"
+              class="text-xs font-medium px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors">
+        Editar
+      </button>
+      <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Info grid -->
+  <div class="grid grid-cols-2 gap-x-6 gap-y-3 text-sm bg-gray-50 rounded-xl p-4">
+    <div>
+      <p class="text-xs text-gray-500">Responsable</p>
+      <p class="font-medium text-gray-700">{{ project.owner or '—' }}</p>
+    </div>
+    <div>
+      <p class="text-xs text-gray-500">Avance</p>
+      <div class="flex items-center gap-2 mt-1">
+        <div class="flex-1 bg-gray-200 rounded-full h-2">
+          <div class="h-2 rounded-full {% if project.percent_complete == 100 %}bg-green-500{% elif project.percent_complete >= 50 %}bg-blue-500{% else %}bg-yellow-500{% endif %}"
+               style="width: {{ project.percent_complete }}%"></div>
+        </div>
+        <span class="text-xs font-medium text-gray-600">{{ project.percent_complete }}%</span>
+      </div>
+    </div>
+    <div>
+      <p class="text-xs text-gray-500">Fecha inicio</p>
+      <p class="font-medium text-gray-700">{{ project.start_date or '—' }}</p>
+    </div>
+    <div>
+      <p class="text-xs text-gray-500">Fecha límite</p>
+      <p class="font-medium text-gray-700">{{ project.end_date or '—' }}</p>
+    </div>
+    {% if project.description %}
+    <div class="col-span-2">
+      <p class="text-xs text-gray-500">Descripción</p>
+      <p class="text-gray-700 mt-0.5">{{ project.description }}</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Decisions section -->
+  <div>
+    <h3 class="text-sm font-semibold text-gray-700 mb-3">Decisiones</h3>
+
+    <div id="decisions-list-{{ project.id }}">
+      {% if decisions %}
+        <div class="space-y-2 mb-4">
+          {% for d in decisions %}
+          <div class="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3">
+            <p class="text-sm font-medium text-gray-800">{{ d.decision }}</p>
+            {% if d.context %}
+            <p class="text-xs text-gray-500 mt-1">{{ d.context }}</p>
+            {% endif %}
+            <div class="flex items-center gap-2 mt-2 text-xs text-gray-400">
+              {% if d.decided_by %}<span>{{ d.decided_by }}</span> · {% endif %}
+              <span>{{ d.created_at[:10] }}</span>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-sm text-gray-400 mb-3">Sin decisiones registradas.</p>
+      {% endif %}
+    </div>
+
+    <!-- Add decision form -->
+    <form hx-post="/projects/{{ project.id }}/decisions"
+          hx-target="#decisions-list-{{ project.id }}"
+          hx-swap="innerHTML"
+          hx-on::after-request="this.reset()"
+          class="border border-gray-200 rounded-xl p-4 space-y-3 bg-white">
+      <p class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Registrar decisión</p>
+      <div>
+        <input type="text" name="decision" required
+               placeholder="Decisión tomada"
+               class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+      <div>
+        <input type="text" name="context"
+               placeholder="Contexto / justificación (opcional)"
+               class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+      <div class="flex gap-3">
+        <input type="text" name="decided_by"
+               placeholder="Decidido por"
+               class="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <button type="submit"
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
+          Registrar
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Status history -->
+  <div>
+    <h3 class="text-sm font-semibold text-gray-700 mb-3">Historial de estados</h3>
+    {% if status_log %}
+    <div class="space-y-1">
+      {% for entry in status_log %}
+      <div class="flex items-center gap-2 text-xs text-gray-500">
+        <span class="font-mono text-gray-400">{{ entry.changed_at[:16].replace('T', ' ') }}</span>
+        {% if entry.old_status %}
+          <span>{{ entry.old_status }}</span>
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+          </svg>
+        {% else %}
+          <span class="text-gray-400">Creado como</span>
+        {% endif %}
+        <span class="font-medium text-gray-700">{{ entry.new_status }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-sm text-gray-400">Sin historial.</p>
+    {% endif %}
+  </div>
+</div>
