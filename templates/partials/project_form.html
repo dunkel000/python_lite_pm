@@ -1,0 +1,126 @@
+{% set is_edit = project is defined and project %}
+<div class="p-6">
+  <div class="flex items-center justify-between mb-5">
+    <h2 class="text-lg font-semibold text-gray-800">
+      {% if is_edit %}Editar Proyecto{% else %}Nuevo Proyecto{% endif %}
+    </h2>
+    <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+    </button>
+  </div>
+
+  <form {% if is_edit %}
+          hx-put="/projects/{{ project.id }}"
+        {% else %}
+          hx-post="/projects"
+        {% endif %}
+        hx-target="#project-table-container"
+        hx-swap="innerHTML"
+        hx-on::after-request="
+          if(event.detail.successful){
+            closeModal();
+            htmx.ajax('GET','/partials/stats',{target:'#stats-container'});
+          }
+        "
+        class="space-y-4">
+
+    <div class="grid grid-cols-2 gap-4">
+      <!-- ID -->
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">ID del Proyecto</label>
+        <input type="text" name="id"
+               value="{{ project.id if is_edit else next_id }}"
+               {% if is_edit %}readonly{% endif %}
+               placeholder="DEV-001"
+               class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 {% if is_edit %}bg-gray-50 text-gray-500{% endif %}"
+               required />
+      </div>
+      <!-- Owner -->
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Responsable</label>
+        <input type="text" name="owner"
+               value="{{ project.owner if is_edit else '' }}"
+               placeholder="Diego"
+               class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+    </div>
+
+    <!-- Name -->
+    <div>
+      <label class="block text-xs font-medium text-gray-600 mb-1">Nombre del Proyecto <span class="text-red-500">*</span></label>
+      <input type="text" name="name"
+             value="{{ project.name if is_edit else '' }}"
+             placeholder="Nombre del proyecto"
+             class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+             required />
+    </div>
+
+    <!-- Description -->
+    <div>
+      <label class="block text-xs font-medium text-gray-600 mb-1">Descripción</label>
+      <textarea name="description" rows="3"
+                placeholder="Descripción del proyecto y objetivos principales"
+                class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none">{{ project.description if is_edit else '' }}</textarea>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <!-- Priority -->
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Prioridad</label>
+        <select name="priority"
+                class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+          {% for opt in ['Alta', 'Media', 'Baja'] %}
+          <option value="{{ opt }}" {% if is_edit and project.priority == opt %}selected{% endif %}>{{ opt }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <!-- Status -->
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Estado</label>
+        <select name="status"
+                class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+          {% for opt in ['Backlog', 'Pendiente', 'En Progreso', 'Bloqueado', 'Completado'] %}
+          <option value="{{ opt }}" {% if is_edit and project.status == opt %}selected{% elif not is_edit and opt == 'Backlog' %}selected{% endif %}>{{ opt }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-3 gap-4">
+      <!-- Start date -->
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Fecha inicio</label>
+        <input type="date" name="start_date"
+               value="{{ project.start_date if is_edit else '' }}"
+               class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+      <!-- End date -->
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Fecha límite</label>
+        <input type="date" name="end_date"
+               value="{{ project.end_date if is_edit else '' }}"
+               class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+      <!-- Percent -->
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">% Avance</label>
+        <input type="number" name="percent_complete" min="0" max="100"
+               value="{{ project.percent_complete if is_edit else 0 }}"
+               class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+    </div>
+
+    <div class="flex gap-3 pt-2">
+      <button type="submit"
+              class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 rounded-lg transition-colors">
+        {% if is_edit %}Guardar cambios{% else %}Crear proyecto{% endif %}
+      </button>
+      <button type="button" onclick="closeModal()"
+              class="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+        Cancelar
+      </button>
+    </div>
+  </form>
+</div>

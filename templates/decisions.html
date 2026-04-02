@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Decisiones{% endblock %}
+{% block header_title %}Registro de Decisiones{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+  <!-- Filter + header -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-5 py-4 flex flex-wrap items-center gap-3">
+    <span class="text-sm font-semibold text-gray-700 flex-1">
+      {{ decisions | length }} decisión{% if decisions | length != 1 %}es{% endif %} registrada{% if decisions | length != 1 %}s{% endif %}
+    </span>
+    <select id="filter-project" name="project_id"
+            hx-get="/partials/decisions-list"
+            hx-target="#decisions-list"
+            hx-swap="innerHTML"
+            hx-trigger="change"
+            class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <option value="">Todos los proyectos</option>
+      {% for p in projects %}
+      <option value="{{ p.id }}" {% if filter_project == p.id %}selected{% endif %}>
+        {{ p.id }} — {{ p.name }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- Decisions list -->
+  <div id="decisions-list" class="space-y-3">
+    {% include "partials/decisions_list.html" %}
+  </div>
+
+</div>
+{% endblock %}

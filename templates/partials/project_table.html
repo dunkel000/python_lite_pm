@@ -1,0 +1,112 @@
+{% set status_classes = {
+  'Backlog':    'bg-gray-100 text-gray-600',
+  'Pendiente':  'bg-blue-100 text-blue-700',
+  'En Progreso':'bg-yellow-100 text-yellow-700',
+  'Bloqueado':  'bg-red-100 text-red-700',
+  'Completado': 'bg-green-100 text-green-700',
+} %}
+{% set priority_classes = {
+  'Alta':  'bg-red-100 text-red-700',
+  'Media': 'bg-yellow-100 text-yellow-700',
+  'Baja':  'bg-green-100 text-green-700',
+} %}
+
+{% if projects %}
+<div class="overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="border-b border-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wide">
+        <th class="px-5 py-3 text-left">ID</th>
+        <th class="px-5 py-3 text-left">Nombre</th>
+        <th class="px-5 py-3 text-left">Prioridad</th>
+        <th class="px-5 py-3 text-left">Estado</th>
+        <th class="px-5 py-3 text-left">Responsable</th>
+        <th class="px-5 py-3 text-left w-36">Avance</th>
+        <th class="px-5 py-3 text-left">Fecha límite</th>
+        <th class="px-5 py-3 text-left">Acciones</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-50">
+      {% for p in projects %}
+      <tr class="hover:bg-gray-50 transition-colors group" id="row-{{ p.id }}">
+        <td class="px-5 py-3 font-mono text-xs text-gray-500 whitespace-nowrap">{{ p.id }}</td>
+        <td class="px-5 py-3 font-medium text-gray-800 max-w-xs">
+          <button hx-get="/projects/{{ p.id }}"
+                  hx-target="#modal-content"
+                  hx-swap="innerHTML"
+                  class="hover:text-blue-600 text-left transition-colors">
+            {{ p.name }}
+          </button>
+        </td>
+        <td class="px-5 py-3 whitespace-nowrap">
+          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ priority_classes.get(p.priority, 'bg-gray-100 text-gray-600') }}">
+            {{ p.priority }}
+          </span>
+        </td>
+        <td class="px-5 py-3 whitespace-nowrap">
+          <select name="status"
+                  hx-patch="/projects/{{ p.id }}/status"
+                  hx-target="#stats-container"
+                  hx-swap="innerHTML"
+                  hx-on::after-request="htmx.ajax('GET','/partials/project-table',{target:'#project-table-container'})"
+                  class="text-xs font-medium px-2 py-1 rounded-full border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-400 {{ status_classes.get(p.status, 'bg-gray-100 text-gray-600') }}">
+            {% for s in ['Backlog','Pendiente','En Progreso','Bloqueado','Completado'] %}
+            <option value="{{ s }}" {% if p.status == s %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+          </select>
+        </td>
+        <td class="px-5 py-3 text-gray-600 whitespace-nowrap">{{ p.owner or '—' }}</td>
+        <td class="px-5 py-3">
+          <div class="flex items-center gap-2">
+            <div class="flex-1 bg-gray-200 rounded-full h-1.5 min-w-[60px]">
+              <div class="h-1.5 rounded-full {% if p.percent_complete == 100 %}bg-green-500{% elif p.percent_complete >= 50 %}bg-blue-500{% else %}bg-yellow-500{% endif %}"
+                   style="width: {{ p.percent_complete }}%"></div>
+            </div>
+            <span class="text-xs text-gray-500 w-8 text-right">{{ p.percent_complete }}%</span>
+          </div>
+        </td>
+        <td class="px-5 py-3 text-gray-600 whitespace-nowrap text-xs">
+          {% if p.end_date %}
+            {% set end = p.end_date %}
+            {{ end }}
+          {% else %}—{% endif %}
+        </td>
+        <td class="px-5 py-3 whitespace-nowrap">
+          <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <!-- Edit -->
+            <button hx-get="/partials/project-form?id={{ p.id }}"
+                    hx-target="#modal-content"
+                    hx-swap="innerHTML"
+                    title="Editar"
+                    class="p-1 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+              </svg>
+            </button>
+            <!-- Delete -->
+            <button hx-delete="/projects/{{ p.id }}"
+                    hx-target="#project-table-container"
+                    hx-swap="innerHTML"
+                    hx-confirm="¿Eliminar el proyecto {{ p.name }}? Esta acción no se puede deshacer."
+                    hx-on::after-request="htmx.ajax('GET','/partials/stats',{target:'#stats-container'})"
+                    title="Eliminar"
+                    class="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+            </button>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="px-5 py-12 text-center text-gray-400">
+  <svg class="w-12 h-12 mx-auto mb-3 opacity-30" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+  </svg>
+  <p class="text-sm">No hay proyectos con los filtros seleccionados.</p>
+</div>
+{% endif %}

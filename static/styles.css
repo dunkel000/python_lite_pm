@@ -1,0 +1,81 @@
+/* ── Gantt Chart ─────────────────────────────────────────────────────────── */
+
+.gantt-grid {
+  display: grid;
+  position: relative;
+}
+
+.gantt-scroll-wrapper {
+  width: 100%;
+}
+
+/* Sticky name column */
+.gantt-row-name,
+.gantt-header-name {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  background-color: #fff;
+}
+
+.gantt-header-name {
+  background-color: #f9fafb;
+}
+
+/* Gantt bar base */
+.gantt-bar {
+  position: relative;
+  border-radius: 6px;
+  height: 28px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  cursor: default;
+  z-index: 5;
+  transition: opacity 0.15s;
+}
+
+.gantt-bar:hover {
+  opacity: 0.85;
+}
+
+/* Progress overlay inside bar */
+.gantt-bar-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.12);
+  border-radius: 6px 0 0 6px;
+  pointer-events: none;
+}
+
+/* Bar label */
+.gantt-bar-label {
+  position: relative;
+  z-index: 1;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  color: rgba(0, 0, 0, 0.75);
+}
+
+/* Status colors */
+.gantt-bar-backlog       { background-color: #9ca3af; }  /* gray-400 */
+.gantt-bar-pendiente     { background-color: #60a5fa; }  /* blue-400 */
+.gantt-bar-en-progreso   { background-color: #fbbf24; }  /* yellow-400 */
+.gantt-bar-bloqueado     { background-color: #f87171; }  /* red-400 */
+.gantt-bar-completado    { background-color: #34d399; }  /* green-400 */
+
+/* ── Misc ────────────────────────────────────────────────────────────────── */
+
+/* HTMX loading indicator */
+.htmx-request .htmx-indicator { opacity: 1; }
+.htmx-indicator { opacity: 0; transition: opacity 200ms ease-in; }
+
+/* Smooth table row transitions */
+tr { transition: background-color 0.1s ease; }
