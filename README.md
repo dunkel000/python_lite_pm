@@ -18,9 +18,9 @@ Dashboard web para gestión de proyectos del equipo de Middle Office (Activos Pr
 git clone https://github.com/dunkel000/python_lite_pm.git
 cd python_lite_pm
 
-# 2. Crear entorno virtual e instalar dependencias
-python3 -m venv .venv
-source .venv/bin/activate
+# 2. Crear entorno conda e instalar dependencias
+conda create -n lite_pm python=3.10
+conda activate lite_pm
 pip install -r requirements.txt
 
 # 3. Iniciar el servidor (crea la base de datos automáticamente)
