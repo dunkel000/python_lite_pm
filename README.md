@@ -29,48 +29,8 @@ python main.py
 
 El servidor levanta en http://localhost:8000
 
-## Deploy en Oracle ARM (dragon000)
-
-**Servidor**: 146.235.243.23  
-**SSH key**: `~/Downloads/ssh-key-2025-01-28-dragon000-private.key`
-
-```bash
-# Conectarse al servidor
-ssh -i ~/Downloads/ssh-key-2025-01-28-dragon000-private.key ubuntu@146.235.243.23
-
-# En el servidor: clonar el repo
-git clone https://github.com/dunkel000/python_lite_pm.git
-cd python_lite_pm
-
-# Instalar dependencias
-pip3 install -r requirements.txt
-
-# Copiar el servicio systemd
-sudo cp tracker.service /etc/systemd/system/tracker.service
-
-# Editar el servicio si la ruta del repo es diferente
-sudo nano /etc/systemd/system/tracker.service
-
-# Habilitar e iniciar
-sudo systemctl daemon-reload
-sudo systemctl enable tracker
-sudo systemctl start tracker
-
-# Verificar estado
-sudo systemctl status tracker
-sudo journalctl -u tracker -f
-```
-
-La app queda disponible en http://146.235.243.23:8000
-
 ### Actualizar el servidor
 
-```bash
-ssh -i ~/Downloads/ssh-key-2025-01-28-dragon000-private.key ubuntu@146.235.243.23
-cd python_lite_pm
-git pull origin main
-sudo systemctl restart tracker
-```
 
 ## Estructura de archivos
 
