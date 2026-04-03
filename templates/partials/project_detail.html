@@ -1,39 +1,39 @@
 {% set status_classes = {
-  'Backlog':    'bg-gray-100 text-gray-600',
-  'Pendiente':  'bg-blue-100 text-blue-700',
-  'En Progreso':'bg-yellow-100 text-yellow-700',
-  'Bloqueado':  'bg-red-100 text-red-700',
-  'Completado': 'bg-green-100 text-green-700',
+  'Backlog':    'bg-secondary text-secondary-foreground border border-border',
+  'Pendiente':  'bg-secondary text-secondary-foreground border border-border',
+  'En Progreso':'bg-primary/10 text-primary border border-primary/20',
+  'Bloqueado':  'bg-destructive/10 text-destructive border border-destructive/20',
+  'Completado': 'bg-secondary text-secondary-foreground border border-border',
 } %}
 {% set priority_classes = {
-  'Alta':  'bg-red-100 text-red-700',
-  'Media': 'bg-yellow-100 text-yellow-700',
-  'Baja':  'bg-green-100 text-green-700',
+  'Alta':  'bg-primary/10 text-primary border border-primary/20',
+  'Media': 'bg-secondary text-secondary-foreground border border-border',
+  'Baja':  'bg-secondary text-secondary-foreground border border-border',
 } %}
 
 <div class="p-6 space-y-6">
   <!-- Header -->
   <div class="flex items-start justify-between">
     <div class="flex-1 min-w-0">
-      <div class="flex items-center gap-2 flex-wrap mb-1">
-        <span class="font-mono text-xs text-gray-400">{{ project.id }}</span>
-        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ status_classes.get(project.status, 'bg-gray-100 text-gray-600') }}">
+      <div class="flex items-center gap-2 flex-wrap mb-2">
+        <span class="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">{{ project.id }}</span>
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider {{ status_classes.get(project.status, 'bg-slate-100 text-slate-600') }}">
           {{ project.status }}
         </span>
-        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ priority_classes.get(project.priority, 'bg-gray-100 text-gray-600') }}">
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider {{ priority_classes.get(project.priority, 'bg-slate-100 text-slate-600') }}">
           {{ project.priority }}
         </span>
       </div>
-      <h2 class="text-xl font-semibold text-gray-800">{{ project.name }}</h2>
+      <h2 class="text-xl font-bold text-foreground leading-tight">{{ project.name }}</h2>
     </div>
     <div class="flex items-center gap-2 ml-4 flex-shrink-0">
       <button hx-get="/partials/project-form?id={{ project.id }}"
               hx-target="#modal-content"
               hx-swap="innerHTML"
-              class="text-xs font-medium px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors">
+              class="text-xs font-medium px-3 py-1.5 bg-secondary hover:bg-secondary/80 text-foreground border border-border rounded-md transition-colors">
         Editar
       </button>
-      <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+      <button onclick="closeModal()" class="text-muted-foreground hover:text-foreground transition-all p-1.5 rounded-md hover:bg-accent">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
         </svg>
@@ -42,59 +42,61 @@
   </div>
 
   <!-- Info grid -->
-  <div class="grid grid-cols-2 gap-x-6 gap-y-3 text-sm bg-gray-50 rounded-xl p-4">
-    <div>
-      <p class="text-xs text-gray-500">Responsable</p>
-      <p class="font-medium text-gray-700">{{ project.owner or '—' }}</p>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/30 rounded-lg p-5 border border-border">
+    <div class="space-y-1">
+      <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Responsable</p>
+      <p class="text-sm font-medium text-foreground">{{ project.owner or '—' }}</p>
     </div>
-    <div>
-      <p class="text-xs text-gray-500">Avance</p>
-      <div class="flex items-center gap-2 mt-1">
-        <div class="flex-1 bg-gray-200 rounded-full h-2">
-          <div class="h-2 rounded-full {% if project.percent_complete == 100 %}bg-green-500{% elif project.percent_complete >= 50 %}bg-blue-500{% else %}bg-yellow-500{% endif %}"
+    <div class="space-y-1">
+      <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Avance</p>
+      <div class="flex items-center gap-3">
+        <div class="flex-1 bg-secondary rounded-full h-2 overflow-hidden border border-border">
+          <div class="h-2 rounded-full bg-primary transition-all duration-500"
                style="width: {{ project.percent_complete }}%"></div>
         </div>
-        <span class="text-xs font-medium text-gray-600">{{ project.percent_complete }}%</span>
+        <span class="text-xs font-bold text-foreground">{{ project.percent_complete }}%</span>
       </div>
     </div>
-    <div>
-      <p class="text-xs text-gray-500">Fecha inicio</p>
-      <p class="font-medium text-gray-700">{{ project.start_date or '—' }}</p>
+    <div class="space-y-1">
+      <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Fecha inicio</p>
+      <p class="text-sm font-medium text-foreground">{{ project.start_date or '—' }}</p>
     </div>
-    <div>
-      <p class="text-xs text-gray-500">Fecha límite</p>
-      <p class="font-medium text-gray-700">{{ project.end_date or '—' }}</p>
+    <div class="space-y-1">
+      <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Fecha límite</p>
+      <p class="text-sm font-medium text-foreground">{{ project.end_date or '—' }}</p>
     </div>
     {% if project.description %}
-    <div class="col-span-2">
-      <p class="text-xs text-gray-500">Descripción</p>
-      <p class="text-gray-700 mt-0.5">{{ project.description }}</p>
+    <div class="col-span-1 md:col-span-2 space-y-1 pt-2 border-t border-border/50">
+      <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Descripción</p>
+      <p class="text-sm text-foreground leading-relaxed">{{ project.description }}</p>
     </div>
     {% endif %}
   </div>
 
   <!-- Decisions section -->
-  <div>
-    <h3 class="text-sm font-semibold text-gray-700 mb-3">Decisiones</h3>
+  <div class="space-y-4">
+    <div class="flex items-center justify-between">
+      <h3 class="text-sm font-bold text-foreground uppercase tracking-wider">Decisiones</h3>
+    </div>
 
-    <div id="decisions-list-{{ project.id }}">
+    <div id="decisions-list-{{ project.id }}" class="space-y-3">
       {% if decisions %}
-        <div class="space-y-2 mb-4">
-          {% for d in decisions %}
-          <div class="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3">
-            <p class="text-sm font-medium text-gray-800">{{ d.decision }}</p>
-            {% if d.context %}
-            <p class="text-xs text-gray-500 mt-1">{{ d.context }}</p>
-            {% endif %}
-            <div class="flex items-center gap-2 mt-2 text-xs text-gray-400">
-              {% if d.decided_by %}<span>{{ d.decided_by }}</span> · {% endif %}
-              <span>{{ d.created_at[:10] }}</span>
-            </div>
+        {% for d in decisions %}
+        <div class="bg-card border border-border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+          <p class="text-sm font-semibold text-foreground">{{ d.decision }}</p>
+          {% if d.context %}
+          <p class="text-xs text-muted-foreground mt-2 leading-relaxed italic">{{ d.context }}</p>
+          {% endif %}
+          <div class="flex items-center justify-between mt-4 pt-3 border-t border-border/50">
+            <span class="text-[10px] font-medium text-muted-foreground uppercase">Por: <span class="text-foreground">{{ d.decided_by or 'Sistema' }}</span></span>
+            <span class="text-[10px] font-medium text-muted-foreground">{{ d.created_at[:10] }}</span>
           </div>
-          {% endfor %}
         </div>
+        {% endfor %}
       {% else %}
-        <p class="text-sm text-gray-400 mb-3">Sin decisiones registradas.</p>
+        <div class="py-10 text-center border border-dashed border-border rounded-lg">
+          <p class="text-sm text-muted-foreground">Sin decisiones registradas.</p>
+        </div>
       {% endif %}
     </div>
 
@@ -103,52 +105,54 @@
           hx-target="#decisions-list-{{ project.id }}"
           hx-swap="innerHTML"
           hx-on::after-request="this.reset()"
-          class="border border-gray-200 rounded-xl p-4 space-y-3 bg-white">
-      <p class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Registrar decisión</p>
-      <div>
+          class="bg-muted/30 border border-border rounded-lg p-5 space-y-4">
+      <p class="text-xs font-bold text-foreground uppercase tracking-wider">Registrar nueva decisión</p>
+      <div class="space-y-3">
         <input type="text" name="decision" required
-               placeholder="Decisión tomada"
-               class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      </div>
-      <div>
-        <input type="text" name="context"
-               placeholder="Contexto / justificación (opcional)"
-               class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      </div>
-      <div class="flex gap-3">
-        <input type="text" name="decided_by"
-               placeholder="Decidido por"
-               class="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        <button type="submit"
-                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
-          Registrar
-        </button>
+               placeholder="¿Qué se decidió?"
+               class="w-full text-sm border border-input rounded-md px-3 py-2 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 transition-all" />
+
+        <textarea name="context" rows="2"
+                  placeholder="Contexto o justificación adicional (opcional)"
+                  class="w-full text-sm border border-input rounded-md px-3 py-2 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 transition-all resize-none"></textarea>
+
+        <div class="flex flex-col md:flex-row gap-3">
+          <input type="text" name="decided_by"
+                 placeholder="Decidido por"
+                 class="flex-1 text-sm border border-input rounded-md px-3 py-2 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 transition-all" />
+          <button type="submit"
+                  class="px-6 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-bold rounded-md transition-all shadow-sm">
+            Registrar
+          </button>
+        </div>
       </div>
     </form>
   </div>
 
   <!-- Status history -->
-  <div>
-    <h3 class="text-sm font-semibold text-gray-700 mb-3">Historial de estados</h3>
+  <div class="pt-4 border-t border-border">
+    <h3 class="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">Historial de cambios</h3>
     {% if status_log %}
-    <div class="space-y-1">
+    <div class="space-y-3">
       {% for entry in status_log %}
-      <div class="flex items-center gap-2 text-xs text-gray-500">
-        <span class="font-mono text-gray-400">{{ entry.changed_at[:16].replace('T', ' ') }}</span>
-        {% if entry.old_status %}
-          <span>{{ entry.old_status }}</span>
-          <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
-          </svg>
-        {% else %}
-          <span class="text-gray-400">Creado como</span>
-        {% endif %}
-        <span class="font-medium text-gray-700">{{ entry.new_status }}</span>
+      <div class="flex items-center gap-4 text-[11px]">
+        <span class="font-mono text-muted-foreground whitespace-nowrap">{{ entry.changed_at[:16].replace('T', ' ') }}</span>
+        <div class="flex items-center gap-2 overflow-hidden">
+          {% if entry.old_status %}
+            <span class="text-muted-foreground truncate">{{ entry.old_status }}</span>
+            <svg class="w-3 h-3 text-muted-foreground flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+            </svg>
+          {% else %}
+            <span class="text-muted-foreground">Inicializado</span>
+          {% endif %}
+          <span class="font-bold text-foreground">{{ entry.new_status }}</span>
+        </div>
       </div>
       {% endfor %}
     </div>
     {% else %}
-    <p class="text-sm text-gray-400">Sin historial.</p>
+    <p class="text-xs text-muted-foreground italic">Sin historial de cambios disponible.</p>
     {% endif %}
   </div>
 </div>
