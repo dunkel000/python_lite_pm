@@ -1,27 +1,53 @@
-<div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-
-  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-    <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Proyectos</p>
-    <p class="mt-2 text-3xl font-bold text-gray-800">{{ stats.total }}</p>
-    <p class="mt-1 text-xs text-gray-400">registrados</p>
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+  <!-- Total -->
+  <div class="bg-card p-5 rounded-lg border border-border shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
+    <div class="p-3 bg-secondary text-secondary-foreground rounded-md">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+      </svg>
+    </div>
+    <div>
+      <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Proyectos</p>
+      <p class="text-2xl font-bold text-foreground">{{ stats.total }}</p>
+    </div>
   </div>
 
-  <div class="bg-white rounded-xl border border-yellow-200 shadow-sm p-5">
-    <p class="text-xs font-medium text-yellow-600 uppercase tracking-wide">En Progreso</p>
-    <p class="mt-2 text-3xl font-bold text-yellow-600">{{ stats.en_progreso }}</p>
-    <p class="mt-1 text-xs text-yellow-400">activos ahora</p>
+  <!-- En Progreso -->
+  <div class="bg-card p-5 rounded-lg border border-border shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
+    <div class="p-3 bg-primary/10 text-primary rounded-md">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+      </svg>
+    </div>
+    <div>
+      <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">En Progreso</p>
+      <p class="text-2xl font-bold text-foreground">{{ stats.en_progreso }}</p>
+    </div>
   </div>
 
-  <div class="bg-white rounded-xl border border-red-200 shadow-sm p-5">
-    <p class="text-xs font-medium text-red-600 uppercase tracking-wide">Bloqueados</p>
-    <p class="mt-2 text-3xl font-bold text-red-600">{{ stats.bloqueados }}</p>
-    <p class="mt-1 text-xs text-red-400">requieren atención</p>
+  <!-- Bloqueados -->
+  <div class="bg-card p-5 rounded-lg border border-border shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
+    <div class="p-3 bg-destructive/10 text-destructive rounded-md">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+      </svg>
+    </div>
+    <div>
+      <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Bloqueados</p>
+      <p class="text-2xl font-bold text-foreground">{{ stats.bloqueados }}</p>
+    </div>
   </div>
 
-  <div class="bg-white rounded-xl border border-green-200 shadow-sm p-5">
-    <p class="text-xs font-medium text-green-600 uppercase tracking-wide">Completados</p>
-    <p class="mt-2 text-3xl font-bold text-green-600">{{ stats.completados_mes }}</p>
-    <p class="mt-1 text-xs text-green-400">este mes</p>
+  <!-- Completados Mes -->
+  <div class="bg-card p-5 rounded-lg border border-border shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
+    <div class="p-3 bg-primary text-primary-foreground rounded-md shadow-sm">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+    </div>
+    <div>
+      <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Completados (Mes)</p>
+      <p class="text-2xl font-bold text-foreground">{{ stats.completados_mes }}</p>
+    </div>
   </div>
-
 </div>
