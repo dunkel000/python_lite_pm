@@ -1,0 +1,306 @@
+{% extends "base.html" %}
+
+{% block title %}Explorador{% endblock %}
+{% block header_title %}Explorador de Proyectos{% endblock %}
+
+{% block content %}
+<div class="explorer-wrapper" id="explorer-root">
+
+  <!-- Controls bar -->
+  <div class="explorer-controls">
+    <div class="explorer-legend">
+      <span class="legend-dot" style="background:var(--node-backlog)"></span><span>Backlog</span>
+      <span class="legend-dot" style="background:var(--node-pendiente)"></span><span>Pendiente</span>
+      <span class="legend-dot" style="background:var(--node-progreso)"></span><span>En Progreso</span>
+      <span class="legend-dot" style="background:var(--node-bloqueado)"></span><span>Bloqueado</span>
+      <span class="legend-dot" style="background:var(--node-completado)"></span><span>Completado</span>
+    </div>
+    <div class="explorer-actions">
+      <button id="btn-reset-zoom" class="exp-btn" title="Centrar vista">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+        Centrar
+      </button>
+      <button id="btn-toggle-labels" class="exp-btn" title="Mostrar/ocultar etiquetas">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+        Etiquetas
+      </button>
+      <select id="filter-status-graph" class="exp-select">
+        <option value="">Todos los estados</option>
+        <option value="Backlog">Backlog</option>
+        <option value="Pendiente">Pendiente</option>
+        <option value="En Progreso">En Progreso</option>
+        <option value="Bloqueado">Bloqueado</option>
+        <option value="Completado">Completado</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Graph canvas -->
+  <div class="explorer-graph-area">
+    <svg id="graph-svg"></svg>
+
+    <!-- Info panel (right) -->
+    <div id="node-info-panel" class="node-info-panel hidden">
+      <div class="node-info-header">
+        <span id="nip-id" class="node-info-id"></span>
+        <button onclick="closeNodePanel()" class="node-info-close">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <h3 id="nip-name" class="node-info-title"></h3>
+      <div class="node-info-row"><span class="node-info-label">Estado</span><span id="nip-status" class="node-info-badge"></span></div>
+      <div class="node-info-row"><span class="node-info-label">Prioridad</span><span id="nip-priority" class="node-info-value"></span></div>
+      <div class="node-info-row"><span class="node-info-label">Responsable</span><span id="nip-owner" class="node-info-value"></span></div>
+      <div class="node-info-progress">
+        <span class="node-info-label">Avance</span>
+        <div class="nip-bar-track"><div id="nip-bar" class="nip-bar-fill"></div></div>
+        <span id="nip-percent" class="node-info-value ml-2"></span>
+      </div>
+      <button id="nip-detail-btn"
+              hx-target="#modal-content"
+              hx-swap="innerHTML"
+              class="nip-open-btn">
+        Ver detalle completo →
+      </button>
+    </div>
+  </div>
+
+  <!-- Tooltip -->
+  <div id="graph-tooltip" class="graph-tooltip"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+(function() {
+  // ─── Config ────────────────────────────────────────────────────────────────
+  const STATUS_COLOR = {
+    'Backlog':     'var(--node-backlog)',
+    'Pendiente':   'var(--node-pendiente)',
+    'En Progreso': 'var(--node-progreso)',
+    'Bloqueado':   'var(--node-bloqueado)',
+    'Completado':  'var(--node-completado)',
+  };
+
+  let allData = { nodes: [], links: [] };
+  let showLabels = true;
+  let currentFilter = '';
+  let simulation, svg, zoomBehavior, linkSel, nodeSel, labelSel;
+
+  const tooltip = document.getElementById('graph-tooltip');
+
+  // ─── Fetch data ─────────────────────────────────────────────────────────────
+  async function loadGraph() {
+    const res = await fetch('/api/graph-data');
+    allData = await res.json();
+    buildGraph(allData);
+  }
+
+  // ─── Build ──────────────────────────────────────────────────────────────────
+  function buildGraph(data) {
+    const container = document.getElementById('graph-svg');
+    const W = container.parentElement.clientWidth;
+    const H = container.parentElement.clientHeight;
+
+    d3.select('#graph-svg').selectAll('*').remove();
+
+    svg = d3.select('#graph-svg')
+      .attr('width', W)
+      .attr('height', H);
+
+    zoomBehavior = d3.zoom()
+      .scaleExtent([0.2, 4])
+      .on('zoom', (e) => g.attr('transform', e.transform));
+    svg.call(zoomBehavior);
+
+    const g = svg.append('g');
+
+    // Arrow marker
+    svg.append('defs').append('marker')
+      .attr('id', 'arrow')
+      .attr('viewBox', '0 -5 10 10')
+      .attr('refX', 28)
+      .attr('refY', 0)
+      .attr('markerWidth', 6)
+      .attr('markerHeight', 6)
+      .attr('orient', 'auto')
+      .append('path')
+      .attr('d', 'M0,-5L10,0L0,5')
+      .attr('fill', 'var(--graph-link)');
+
+    // Filter nodes
+    const filtered = currentFilter
+      ? data.nodes.filter(n => n.status === currentFilter)
+      : data.nodes;
+    const filteredIds = new Set(filtered.map(n => n.id));
+    const filteredLinks = data.links.filter(
+      l => filteredIds.has(l.source.id || l.source) && filteredIds.has(l.target.id || l.target)
+    );
+
+    // Clone for d3 mutation
+    const nodes = filtered.map(d => ({...d}));
+    const links = filteredLinks.map(d => ({...d}));
+
+    simulation = d3.forceSimulation(nodes)
+      .force('link', d3.forceLink(links).id(d => d.id).distance(120))
+      .force('charge', d3.forceManyBody().strength(-350))
+      .force('center', d3.forceCenter(W / 2, H / 2))
+      .force('collision', d3.forceCollide().radius(d => nodeRadius(d) + 10));
+
+    // Link lines
+    linkSel = g.append('g')
+      .selectAll('line')
+      .data(links)
+      .join('line')
+      .attr('class', 'graph-link')
+      .attr('marker-end', 'url(#arrow)');
+
+    // Node groups
+    nodeSel = g.append('g')
+      .selectAll('g.node')
+      .data(nodes)
+      .join('g')
+      .attr('class', 'node graph-node')
+      .call(d3.drag()
+        .on('start', dragStart)
+        .on('drag', dragged)
+        .on('end', dragEnd))
+      .on('click', (event, d) => openNodePanel(d))
+      .on('mouseover', (event, d) => showTooltip(event, d))
+      .on('mousemove', (event) => moveTooltip(event))
+      .on('mouseleave', () => hideTooltip());
+
+    // Glow effect circle
+    nodeSel.append('circle')
+      .attr('class', 'node-glow')
+      .attr('r', d => nodeRadius(d) + 6)
+      .attr('fill', d => STATUS_COLOR[d.status] || '#888')
+      .attr('opacity', 0.15);
+
+    // Main circle
+    nodeSel.append('circle')
+      .attr('class', 'node-circle')
+      .attr('r', d => nodeRadius(d))
+      .attr('fill', d => STATUS_COLOR[d.status] || '#888')
+      .attr('stroke', 'var(--graph-node-stroke)')
+      .attr('stroke-width', 2);
+
+    // Progress ring
+    nodeSel.each(function(d) {
+      const r = nodeRadius(d);
+      const circ = 2 * Math.PI * r;
+      const dash = (d.percent / 100) * circ;
+      d3.select(this).append('circle')
+        .attr('r', r)
+        .attr('fill', 'none')
+        .attr('stroke', 'rgba(255,255,255,0.6)')
+        .attr('stroke-width', 2.5)
+        .attr('stroke-dasharray', `${dash} ${circ}`)
+        .attr('stroke-linecap', 'round')
+        .attr('transform', 'rotate(-90)');
+    });
+
+    // ID label inside node
+    nodeSel.append('text')
+      .attr('class', 'node-id-text')
+      .attr('text-anchor', 'middle')
+      .attr('dy', '0.35em')
+      .text(d => d.id)
+      .attr('font-size', '9px')
+      .attr('font-weight', '700')
+      .attr('fill', 'rgba(255,255,255,0.9)')
+      .attr('pointer-events', 'none');
+
+    // Name labels below node
+    labelSel = g.append('g')
+      .selectAll('text.node-label')
+      .data(nodes)
+      .join('text')
+      .attr('class', 'node-label')
+      .attr('text-anchor', 'middle')
+      .attr('dy', d => nodeRadius(d) + 16)
+      .text(d => d.name.length > 22 ? d.name.slice(0, 20) + '…' : d.name)
+      .attr('fill', 'var(--graph-label)')
+      .attr('font-size', '11px')
+      .attr('pointer-events', 'none')
+      .style('display', showLabels ? null : 'none');
+
+    simulation.on('tick', () => {
+      linkSel
+        .attr('x1', d => d.source.x)
+        .attr('y1', d => d.source.y)
+        .attr('x2', d => d.target.x)
+        .attr('y2', d => d.target.y);
+      nodeSel.attr('transform', d => `translate(${d.x},${d.y})`);
+      labelSel.attr('transform', d => `translate(${d.x},${d.y})`);
+    });
+  }
+
+  function nodeRadius(d) {
+    return 16 + Math.round((d.percent / 100) * 10);
+  }
+
+  // ─── Drag ───────────────────────────────────────────────────────────────────
+  function dragStart(event, d) {
+    if (!event.active) simulation.alphaTarget(0.3).restart();
+    d.fx = d.x; d.fy = d.y;
+  }
+  function dragged(event, d) { d.fx = event.x; d.fy = event.y; }
+  function dragEnd(event, d) {
+    if (!event.active) simulation.alphaTarget(0);
+    d.fx = null; d.fy = null;
+  }
+
+  // ─── Tooltip ────────────────────────────────────────────────────────────────
+  function showTooltip(event, d) {
+    tooltip.innerHTML = `<strong>${d.id}</strong> ${d.name}<br><span style="opacity:.7">${d.status} · ${d.percent}%</span>`;
+    tooltip.style.display = 'block';
+    moveTooltip(event);
+  }
+  function moveTooltip(event) {
+    tooltip.style.left = (event.pageX + 14) + 'px';
+    tooltip.style.top  = (event.pageY - 28) + 'px';
+  }
+  function hideTooltip() { tooltip.style.display = 'none'; }
+
+  // ─── Node panel ─────────────────────────────────────────────────────────────
+  function openNodePanel(d) {
+    document.getElementById('nip-id').textContent = d.id;
+    document.getElementById('nip-name').textContent = d.name;
+    document.getElementById('nip-status').textContent = d.status;
+    document.getElementById('nip-priority').textContent = d.priority;
+    document.getElementById('nip-owner').textContent = d.owner || '—';
+    document.getElementById('nip-percent').textContent = d.percent + '%';
+    document.getElementById('nip-bar').style.width = d.percent + '%';
+    const btn = document.getElementById('nip-detail-btn');
+    btn.setAttribute('hx-get', `/projects/${d.id}`);
+    htmx.process(btn);
+    document.getElementById('node-info-panel').classList.remove('hidden');
+  }
+  window.closeNodePanel = function() {
+    document.getElementById('node-info-panel').classList.add('hidden');
+  };
+
+  // ─── Controls ───────────────────────────────────────────────────────────────
+  document.getElementById('btn-reset-zoom').addEventListener('click', () => {
+    svg.transition().duration(600).call(zoomBehavior.transform, d3.zoomIdentity);
+  });
+
+  document.getElementById('btn-toggle-labels').addEventListener('click', () => {
+    showLabels = !showLabels;
+    labelSel && labelSel.style('display', showLabels ? null : 'none');
+  });
+
+  document.getElementById('filter-status-graph').addEventListener('change', function() {
+    currentFilter = this.value;
+    buildGraph(allData);
+  });
+
+  // Re-render on resize
+  window.addEventListener('resize', () => buildGraph(allData));
+
+  loadGraph();
+})();
+</script>
+{% endblock %}

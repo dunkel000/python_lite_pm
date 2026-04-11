@@ -48,8 +48,23 @@ def init_db():
                 new_status TEXT,
                 changed_at TEXT DEFAULT (datetime('now'))
             );
+            CREATE TABLE IF NOT EXISTS "references" (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                title      TEXT NOT NULL,
+                authors    TEXT,
+                year       INTEGER,
+                type       TEXT CHECK(type IN ('paper','book','chapter')),
+                abstract   TEXT,
+                doi        TEXT,
+                url        TEXT,
+                tags       TEXT,
+                journal    TEXT,
+                publisher  TEXT,
+                created_at TEXT DEFAULT (datetime('now'))
+            );
         """)
     _seed_if_empty(conn)
+    _seed_references_if_empty(conn)
     conn.close()
 
 
@@ -121,6 +136,69 @@ def _seed_if_empty(conn):
                VALUES (:id, :name, :description, :priority, :status, :owner,
                :start_date, :end_date, :percent_complete)""",
             p,
+        )
+    conn.commit()
+
+
+def _seed_references_if_empty(conn):
+    count = conn.execute("SELECT COUNT(*) FROM \"references\"").fetchone()[0]
+    if count > 0:
+        return
+    seed_refs = [
+        {
+            "title": "Asset Pricing",
+            "authors": "John H. Cochrane",
+            "year": 2005,
+            "type": "book",
+            "abstract": "A comprehensive treatment of modern asset pricing theory. Covers consumption-based models, factor pricing, option pricing, and the equity premium puzzle from a unified stochastic discount factor perspective.",
+            "doi": None,
+            "url": "https://press.uchicago.edu/ucp/books/book/chicago/A/bo3772499.html",
+            "tags": "#finance #assetpricing #sdf author:Cochrane",
+            "journal": None,
+            "publisher": "University of Chicago Press",
+        },
+        {
+            "title": "The Cross-Section of Expected Stock Returns",
+            "authors": "Eugene F. Fama, Kenneth R. French",
+            "year": 1992,
+            "type": "paper",
+            "abstract": "Two easily measured variables, size and book-to-market equity, combine to capture the cross-sectional variation in average stock returns associated with market beta, size, leverage, book-to-market equity, and earnings-price ratios.",
+            "doi": "10.1111/j.1540-6261.1992.tb04398.x",
+            "url": "https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1540-6261.1992.tb04398.x",
+            "tags": "#finance #factormodels #crosssection author:Fama author:French",
+            "journal": "The Journal of Finance",
+            "publisher": None,
+        },
+        {
+            "title": "An Introduction to Markov Chain Monte Carlo Methods",
+            "authors": "Matthew Richey",
+            "year": 2010,
+            "type": "paper",
+            "abstract": "A gentle introduction to Markov chain Monte Carlo methods, with applications to Bayesian inference and computational statistics. Covers the Metropolis-Hastings algorithm, Gibbs sampling, and convergence diagnostics.",
+            "doi": "10.1080/00029890.2010.10390634",
+            "url": None,
+            "tags": "#markovprocess #mcmc #bayesian #statistics author:Richey",
+            "journal": "The American Mathematical Monthly",
+            "publisher": None,
+        },
+        {
+            "title": "Portfolio Selection",
+            "authors": "Harry M. Markowitz",
+            "year": 1952,
+            "type": "paper",
+            "abstract": "The paper introduces the mean-variance framework for portfolio selection. It establishes the concept of the efficient frontier and demonstrates how diversification reduces portfolio risk without sacrificing expected return.",
+            "doi": "10.2307/2975974",
+            "url": "https://www.jstor.org/stable/2975974",
+            "tags": "#finance #portfolio #optimization #meanvariance author:Markowitz",
+            "journal": "The Journal of Finance",
+            "publisher": None,
+        },
+    ]
+    for r in seed_refs:
+        conn.execute(
+            """INSERT INTO \"references\" (title, authors, year, type, abstract, doi, url, tags, journal, publisher)
+               VALUES (:title, :authors, :year, :type, :abstract, :doi, :url, :tags, :journal, :publisher)""",
+            r,
         )
     conn.commit()
 
@@ -300,4 +378,82 @@ def get_stats():
         "en_progreso": en_progreso,
         "bloqueados": bloqueados,
         "completados_mes": completados_mes,
+    }
+
+
+# ── References ─────────────────────────────────────────────────────────────────────────────────
+
+def get_all_references(ref_type: str = None, search: str = None, tag: str = None):
+    conn = get_conn()
+    query = 'SELECT * FROM "references" WHERE 1=1'
+    params = []
+    if ref_type:
+        query += " AND type = ?"
+        params.append(ref_type)
+    if search:
+        query += " AND (title LIKE ? OR authors LIKE ? OR abstract LIKE ?)"
+        params.extend([f"%{search}%", f"%{search}%", f"%{search}%"])
+    if tag:
+        query += " AND tags LIKE ?"
+        params.append(f"%{tag}%")
+    query += " ORDER BY year DESC, created_at DESC"
+    rows = conn.execute(query, params).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_reference(ref_id: int):
+    conn = get_conn()
+    row = conn.execute('SELECT * FROM "references" WHERE id = ?', (ref_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def create_reference(data: dict):
+    conn = get_conn()
+    with conn:
+        cursor = conn.execute(
+            """INSERT INTO \"references\" (title, authors, year, type, abstract, doi, url, tags, journal, publisher)
+               VALUES (:title, :authors, :year, :type, :abstract, :doi, :url, :tags, :journal, :publisher)""",
+            data,
+        )
+    ref_id = cursor.lastrowid
+    conn.close()
+    return ref_id
+
+
+def update_reference(ref_id: int, data: dict):
+    conn = get_conn()
+    with conn:
+        conn.execute(
+            """UPDATE \"references\" SET title=:title, authors=:authors, year=:year,
+               type=:type, abstract=:abstract, doi=:doi, url=:url,
+               tags=:tags, journal=:journal, publisher=:publisher
+               WHERE id=:id""",
+            {**data, "id": ref_id},
+        )
+    conn.close()
+
+
+def delete_reference(ref_id: int):
+    conn = get_conn()
+    with conn:
+        conn.execute('DELETE FROM "references" WHERE id = ?', (ref_id,))
+    conn.close()
+
+
+def get_reference_stats():
+    conn = get_conn()
+    total = conn.execute('SELECT COUNT(*) FROM "references"').fetchone()[0]
+    papers = conn.execute('SELECT COUNT(*) FROM "references" WHERE type = \'paper\'').fetchone()[0]
+    books = conn.execute('SELECT COUNT(*) FROM "references" WHERE type = \'book\'').fetchone()[0]
+    chapters = conn.execute('SELECT COUNT(*) FROM "references" WHERE type = \'chapter\'').fetchone()[0]
+    newest = conn.execute('SELECT MAX(year) FROM "references"').fetchone()[0]
+    conn.close()
+    return {
+        "total": total,
+        "papers": papers,
+        "books": books,
+        "chapters": chapters,
+        "newest_year": newest,
     }

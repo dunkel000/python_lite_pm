@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Biblioteca{% endblock %}
+{% block header_title %}Biblioteca Científica{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Stats strip -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="bg-card border border-border rounded-lg px-5 py-4 flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+      </div>
+      <div>
+        <p class="text-2xl font-bold text-foreground">{{ stats.total }}</p>
+        <p class="text-xs text-muted-foreground mt-0.5">Total docs</p>
+      </div>
+    </div>
+    <div class="bg-card border border-border rounded-lg px-5 py-4 flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      </div>
+      <div>
+        <p class="text-2xl font-bold text-foreground">{{ stats.papers }}</p>
+        <p class="text-xs text-muted-foreground mt-0.5">Papers</p>
+      </div>
+    </div>
+    <div class="bg-card border border-border rounded-lg px-5 py-4 flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+      </div>
+      <div>
+        <p class="text-2xl font-bold text-foreground">{{ stats.books }}</p>
+        <p class="text-xs text-muted-foreground mt-0.5">Books</p>
+      </div>
+    </div>
+    <div class="bg-card border border-border rounded-lg px-5 py-4 flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7v8a2 2 0 002 2H6a2 2 0 01-2-2V7a4 4 0 014-4h4a4 4 0 014 4v3"/></svg>
+      </div>
+      <div>
+        <p class="text-2xl font-bold text-foreground">{{ stats.newest_year or '—' }}</p>
+        <p class="text-xs text-muted-foreground mt-0.5">Año más reciente</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
+    <div class="px-5 py-4 flex flex-wrap items-center gap-3 border-b border-border bg-muted/50">
+      <h2 class="text-sm font-semibold text-foreground flex-1">Referencias</h2>
+
+      <!-- Search -->
+      <input id="lib-search" type="search" name="search"
+             placeholder="Buscar título, autor, abstract…"
+             hx-get="/partials/reference-grid"
+             hx-target="#ref-grid-container"
+             hx-include="#lib-search,#lib-type,#lib-tag"
+             hx-trigger="input changed delay:350ms"
+             class="text-sm border border-input rounded-md px-3 py-1.5 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 transition-all w-56" />
+
+      <!-- Type filter -->
+      <select id="lib-type" name="ref_type"
+              hx-get="/partials/reference-grid"
+              hx-target="#ref-grid-container"
+              hx-include="#lib-search,#lib-type,#lib-tag"
+              hx-trigger="change"
+              class="text-sm border border-input rounded-md px-3 py-1.5 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 transition-all">
+        <option value="">Todos los tipos</option>
+        <option value="paper">Paper</option>
+        <option value="book">Book</option>
+        <option value="chapter">Chapter</option>
+      </select>
+
+      <!-- Tag filter -->
+      <input id="lib-tag" type="text" name="tag"
+             placeholder="#tag o author:Name"
+             hx-get="/partials/reference-grid"
+             hx-target="#ref-grid-container"
+             hx-include="#lib-search,#lib-type,#lib-tag"
+             hx-trigger="input changed delay:350ms"
+             class="text-sm border border-input rounded-md px-3 py-1.5 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 transition-all w-44" />
+
+      <!-- Add button -->
+      <button hx-get="/partials/reference-form"
+              hx-target="#modal-content"
+              hx-swap="innerHTML"
+              class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium px-4 py-1.5 rounded-md transition-colors shadow-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        Nueva Referencia
+      </button>
+    </div>
+
+    <!-- Reference grid -->
+    <div id="ref-grid-container" class="p-5">
+      {% include "partials/reference_grid.html" %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}
