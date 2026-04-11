@@ -1,7 +1,8 @@
 from datetime import date, timedelta
+import json
 
 from fastapi import APIRouter, Form, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 import db
@@ -231,4 +232,50 @@ def update_status(request: Request, project_id: str, status: str = Form(...)):
         request,
         "partials/stats_cards.html",
         {"stats": stats},
+    )
+
+
+# ── Graph API ──────────────────────────────────────────────────────────────────────────
+
+@router.get("/api/graph-data")
+def graph_data():
+    projects = db.get_all_projects()
+    nodes = []
+    links = []
+
+    for p in projects:
+        nodes.append({
+            "id": p["id"],
+            "name": p["name"],
+            "status": p["status"],
+            "priority": p["priority"],
+            "owner": p["owner"] or "",
+            "percent": p["percent_complete"],
+        })
+
+    # Build owner-based edges: projects sharing same owner get a link
+    owner_map: dict = {}
+    for p in projects:
+        o = p["owner"] or ""
+        if o:
+            owner_map.setdefault(o, []).append(p["id"])
+
+    seen = set()
+    for owner, ids in owner_map.items():
+        for i in range(len(ids)):
+            for j in range(i + 1, len(ids)):
+                key = tuple(sorted([ids[i], ids[j]]))
+                if key not in seen:
+                    seen.add(key)
+                    links.append({"source": ids[i], "target": ids[j], "owner": owner})
+
+    return JSONResponse({"nodes": nodes, "links": links})
+
+
+@router.get("/explorer", response_class=HTMLResponse)
+def explorer_page(request: Request):
+    return templates.TemplateResponse(
+        request,
+        "explorer.html",
+        {"active_page": "explorer"},
     )
