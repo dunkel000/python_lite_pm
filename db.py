@@ -339,6 +339,33 @@ def _attach_tags(conn, project: dict) -> dict:
     return project
 
 
+def _attach_tags_to_projects(conn, projects: list[dict]) -> list[dict]:
+    if not projects:
+        return projects
+
+    project_ids = [project["id"] for project in projects]
+    placeholders = ",".join("?" for _ in project_ids)
+    tag_rows = conn.execute(
+        f"""SELECT pt.project_id, t.id, t.name, t.color
+            FROM project_tags pt
+            JOIN tags t ON t.id = pt.tag_id
+            WHERE pt.project_id IN ({placeholders})
+            ORDER BY t.name""",
+        project_ids,
+    ).fetchall()
+
+    tags_by_project_id = {project_id: [] for project_id in project_ids}
+    for row in tag_rows:
+        row_dict = dict(row)
+        project_id = row_dict.pop("project_id")
+        tags_by_project_id[project_id].append(row_dict)
+
+    for project in projects:
+        project["tags"] = tags_by_project_id.get(project["id"], [])
+
+    return projects
+
+
 def get_all_projects(
     status: str = None,
     priority: str = None,
@@ -365,7 +392,7 @@ def get_all_projects(
         params.append(tag_id)
     query += " ORDER BY p.created_at DESC"
     rows = conn.execute(query, params).fetchall()
-    projects = [_attach_tags(conn, dict(r)) for r in rows]
+    projects = _attach_tags_to_projects(conn, [dict(r) for r in rows])
     conn.close()
     return projects
 
