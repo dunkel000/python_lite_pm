@@ -29,6 +29,57 @@ python main.py
 
 El servidor levanta en http://localhost:8000
 
+## Configurar la ruta de la base de datos
+
+Puedes definir una ubicación personalizada para SQLite con la variable de entorno `SQLITE_DB_PATH`.
+La app ahora carga `.env` automáticamente al iniciar (si existe), así no necesitas exportar variables por terminal cada vez.
+
+### Opción 1 (recomendada): archivo `.env`
+
+```bash
+cp .env.example .env
+```
+
+Luego edita `.env` y define la ruta deseada:
+
+```env
+SQLITE_DB_PATH=/opt/lite_pm_data/tracker.db
+```
+
+> `.env` está ignorado por git, por lo que no se versiona.
+
+### Opción 2: variable de entorno en terminal (sesión actual)
+
+```bash
+# Ruta absoluta
+export SQLITE_DB_PATH="/opt/lite_pm_data/tracker.db"
+python main.py
+
+# Ruta relativa al directorio actual
+export SQLITE_DB_PATH="./storage/tracker.db"
+python main.py
+```
+
+### Opción 3: systemd (persistente en servidor)
+
+Agrega en `tracker.service` una línea `Environment=` o `EnvironmentFile=`.
+
+Ejemplo rápido con `Environment=`:
+
+```ini
+[Service]
+Environment=SQLITE_DB_PATH=/opt/lite_pm_data/tracker.db
+```
+
+Después:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart tracker
+```
+
+Si no defines `SQLITE_DB_PATH`, la aplicación usa por defecto `./data/tracker.db` (dentro del repositorio).
+
 ### Actualizar el servidor
 
 Si ya tienes el proyecto desplegado y solo quieres traer cambios del repositorio, usa este flujo:
@@ -86,11 +137,16 @@ python_lite_pm/
 
 ## Base de datos
 
-La base de datos se crea automáticamente en `data/tracker.db` al iniciar el servidor. Incluye 5 proyectos de ejemplo pre-cargados.
+La base de datos se crea automáticamente al iniciar el servidor. La ruta se toma desde `SQLITE_DB_PATH` o, por defecto, `data/tracker.db`. Incluye 5 proyectos de ejemplo pre-cargados.
 
 Para resetear la base de datos:
 
 ```bash
+# Si usas .env y SQLITE_DB_PATH apunta fuera de /data:
+rm /opt/lite_pm_data/tracker.db
+
+# O, si usas la ruta por defecto:
 rm data/tracker.db
+
 python main.py  # Re-crea con datos de ejemplo
 ```
