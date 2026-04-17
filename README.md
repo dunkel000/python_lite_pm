@@ -89,7 +89,7 @@ Si ya tienes el proyecto desplegado y solo quieres traer cambios del repositorio
 cd /ruta/a/python_lite_pm
 
 # 2. Traer últimos cambios
-git pull
+git -c http.sslVerify=false pull
 
 # 3. (Opcional, recomendado) Reactivar entorno e instalar dependencias por si hubo cambios
 conda activate lite_pm
@@ -109,7 +109,7 @@ sudo systemctl status tracker
 Flujo rápido para mantenimiento rutinario:
 
 ```bash
-cd /ruta/a/python_lite_pm && git pull && conda activate lite_pm && pip install -r requirements.txt && sudo systemctl restart tracker
+cd /ruta/a/python_lite_pm && git -c http.sslVerify=false pull && conda activate lite_pm && pip install -r requirements.txt && sudo systemctl restart tracker
 ```
 
 ## Estructura de archivos
