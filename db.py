@@ -295,6 +295,34 @@ def create_decision(project_id: str, data: dict):
     conn.close()
 
 
+def update_decision(project_id: str, decision_id: int, data: dict):
+    conn = get_conn()
+    with conn:
+        conn.execute(
+            """UPDATE decisions
+               SET decision = ?, context = ?, decided_by = ?
+               WHERE id = ? AND project_id = ?""",
+            (
+                data.get("decision"),
+                data.get("context"),
+                data.get("decided_by"),
+                decision_id,
+                project_id,
+            ),
+        )
+    conn.close()
+
+
+def delete_decision(project_id: str, decision_id: int):
+    conn = get_conn()
+    with conn:
+        conn.execute(
+            "DELETE FROM decisions WHERE id = ? AND project_id = ?",
+            (decision_id, project_id),
+        )
+    conn.close()
+
+
 # ── Status Log ────────────────────────────────────────────────────────────────
 
 def get_status_log(project_id: str):

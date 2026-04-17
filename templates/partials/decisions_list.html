@@ -10,7 +10,7 @@
       </div>
       <div class="flex-shrink-0 text-right">
         {% if d.project_name is defined %}
-        <button hx-get="/partials/project-detail/{{ d.project_id }}"
+        <button hx-get="/projects/{{ d.project_id }}"
                 hx-target="#modal-content"
                 class="inline-flex items-center px-2 py-0.5 rounded-full bg-secondary text-foreground text-[10px] font-bold uppercase tracking-wider border border-border hover:bg-accent transition-colors mb-1">
           {{ d.project_id }}
