@@ -31,6 +31,35 @@ El servidor levanta en http://localhost:8000
 
 ### Actualizar el servidor
 
+Si ya tienes el proyecto desplegado y solo quieres traer cambios del repositorio, usa este flujo:
+
+```bash
+# 1. Ir al directorio del proyecto
+cd /ruta/a/python_lite_pm
+
+# 2. Traer últimos cambios
+git pull
+
+# 3. (Opcional, recomendado) Reactivar entorno e instalar dependencias por si hubo cambios
+conda activate lite_pm
+pip install -r requirements.txt
+
+# 4. Reiniciar servicio en el servidor
+sudo systemctl restart tracker
+sudo systemctl status tracker
+```
+
+#### ¿Hace falta reinstalar o recompilar?
+
+- **Reinstalar dependencias**: solo si cambió `requirements.txt` (o si tienes errores de importación).
+- **Recompilar**: **no aplica** en este proyecto, porque no usa pipeline de build (sin Node, sin bundlers, Tailwind por CDN).
+- **Migraciones de base de datos**: el sistema las aplica al arrancar (`init_db()`), así que normalmente basta con reiniciar el servicio.
+
+Flujo rápido para mantenimiento rutinario:
+
+```bash
+cd /ruta/a/python_lite_pm && git pull && conda activate lite_pm && pip install -r requirements.txt && sudo systemctl restart tracker
+```
 
 ## Estructura de archivos
 
