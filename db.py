@@ -2,11 +2,37 @@ import sqlite3
 import os
 from datetime import datetime
 
-DB_PATH = os.getenv("SQLITE_DB_PATH", os.path.join(os.path.dirname(__file__), "data", "tracker.db"))
+
+def load_local_env(env_path: str = ".env") -> None:
+    if not os.path.exists(env_path):
+        return
+
+    with open(env_path, "r", encoding="utf-8") as env_file:
+        for raw_line in env_file:
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip().strip("'").strip('"')
+
+            if key and key not in os.environ:
+                os.environ[key] = value
+
+
+load_local_env()
+
+DEFAULT_DB_PATH = os.path.join(os.path.dirname(__file__), "data", "tracker.db")
+
+
+def get_db_path() -> str:
+    configured_path = os.getenv("SQLITE_DB_PATH", DEFAULT_DB_PATH)
+    return os.path.abspath(os.path.expanduser(configured_path))
 
 
 def get_conn():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(get_db_path())
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
@@ -14,7 +40,9 @@ def get_conn():
 
 
 def init_db():
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    db_dir = os.path.dirname(get_db_path())
+    if db_dir:
+        os.makedirs(db_dir, exist_ok=True)
     conn = get_conn()
     with conn:
         conn.executescript("""
@@ -302,4 +330,3 @@ def get_stats():
         "bloqueados": bloqueados,
         "completados_mes": completados_mes,
     }
-
