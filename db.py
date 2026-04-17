@@ -471,6 +471,7 @@ def delete_project(project_id: str):
     conn = get_conn()
     with conn:
         conn.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+        _cleanup_orphan_tags_tx(conn)
     conn.close()
 
 
@@ -682,6 +683,13 @@ def _set_project_tags_tx(conn, project_id: str, tag_names):
             "INSERT OR IGNORE INTO project_tags (project_id, tag_id) VALUES (?, ?)",
             (project_id, tag_id),
         )
+    _cleanup_orphan_tags_tx(conn)
+
+
+def _cleanup_orphan_tags_tx(conn):
+    conn.execute(
+        "DELETE FROM tags WHERE id NOT IN (SELECT DISTINCT tag_id FROM project_tags)"
+    )
 
 
 def set_project_tags(project_id: str, tag_names):
