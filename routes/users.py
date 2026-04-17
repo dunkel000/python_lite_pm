@@ -23,6 +23,16 @@ def _error_fragment(message: str) -> HTMLResponse:
     return HTMLResponse(html, status_code=400)
 
 
+def _not_found_fragment(message: str) -> HTMLResponse:
+    html = (
+        '<div class="p-4 text-sm text-destructive bg-destructive/10 '
+        'border border-destructive/30 rounded-md">'
+        f"{message}"
+        "</div>"
+    )
+    return HTMLResponse(html, status_code=404)
+
+
 def _validate(name: str, email: str):
     name = (name or "").strip()
     email = (email or "").strip().lower()
@@ -94,6 +104,8 @@ def update_user(
         db.update_user(user_id, name, email)
     except sqlite3.IntegrityError:
         return _error_fragment("Ya existe un usuario con ese email.")
+    except db.UserNotFoundError:
+        return _not_found_fragment("Usuario no encontrado.")
     users = db.list_users()
     return templates.TemplateResponse(
         request,
@@ -104,7 +116,10 @@ def update_user(
 
 @router.delete("/users/{user_id}", response_class=HTMLResponse)
 def delete_user(request: Request, user_id: int):
-    db.delete_user(user_id)
+    try:
+        db.delete_user(user_id)
+    except db.UserNotFoundError:
+        return _not_found_fragment("Usuario no encontrado.")
     users = db.list_users()
     return templates.TemplateResponse(
         request,
