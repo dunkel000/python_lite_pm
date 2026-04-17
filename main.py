@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 import db
-from routes import projects, decisions
+from routes import projects, decisions, users
 
 app = FastAPI(title="Project Tracker — Activos Privados")
 
@@ -12,6 +12,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 app.include_router(projects.router)
 app.include_router(decisions.router)
+app.include_router(users.router)
 
 
 @app.on_event("startup")

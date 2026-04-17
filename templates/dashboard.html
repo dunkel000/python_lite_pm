@@ -17,11 +17,11 @@
       <h2 class="text-sm font-semibold text-foreground flex-1">Proyectos</h2>
 
       <!-- Filters -->
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 flex-wrap">
         <select id="filter-status" name="status"
                 hx-get="/partials/project-table"
                 hx-target="#project-table-container"
-                hx-include="#filter-status,#filter-priority"
+                hx-include="#filter-status,#filter-priority,#filter-user,#filter-tag"
                 hx-trigger="change"
                 class="text-sm border border-input rounded-md px-3 py-1.5 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 transition-all">
           <option value="">Todos los estados</option>
@@ -35,13 +35,37 @@
         <select id="filter-priority" name="priority"
                 hx-get="/partials/project-table"
                 hx-target="#project-table-container"
-                hx-include="#filter-status,#filter-priority"
+                hx-include="#filter-status,#filter-priority,#filter-user,#filter-tag"
                 hx-trigger="change"
                 class="text-sm border border-input rounded-md px-3 py-1.5 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 transition-all">
           <option value="">Todas las prioridades</option>
           <option value="Alta">Alta</option>
           <option value="Media">Media</option>
           <option value="Baja">Baja</option>
+        </select>
+
+        <select id="filter-user" name="assigned_user_id"
+                hx-get="/partials/project-table"
+                hx-target="#project-table-container"
+                hx-include="#filter-status,#filter-priority,#filter-user,#filter-tag"
+                hx-trigger="change"
+                class="text-sm border border-input rounded-md px-3 py-1.5 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 transition-all">
+          <option value="">Todos los responsables</option>
+          {% for u in users %}
+          <option value="{{ u.id }}">{{ u.name }}</option>
+          {% endfor %}
+        </select>
+
+        <select id="filter-tag" name="tag_id"
+                hx-get="/partials/project-table"
+                hx-target="#project-table-container"
+                hx-include="#filter-status,#filter-priority,#filter-user,#filter-tag"
+                hx-trigger="change"
+                class="text-sm border border-input rounded-md px-3 py-1.5 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 transition-all">
+          <option value="">Todas las etiquetas</option>
+          {% for t in tags %}
+          <option value="{{ t.id }}">{{ t.name }}</option>
+          {% endfor %}
         </select>
       </div>
 

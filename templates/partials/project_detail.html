@@ -45,7 +45,12 @@
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/30 rounded-lg p-5 border border-border">
     <div class="space-y-1">
       <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Responsable</p>
-      <p class="text-sm font-medium text-foreground">{{ project.owner or '—' }}</p>
+      {% if project.assigned_user_name %}
+        <p class="text-sm font-medium text-foreground">{{ project.assigned_user_name }}</p>
+        <p class="text-xs text-muted-foreground">{{ project.assigned_user_email }}</p>
+      {% else %}
+        <p class="text-sm font-medium text-foreground">—</p>
+      {% endif %}
     </div>
     <div class="space-y-1">
       <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Avance</p>
@@ -65,6 +70,16 @@
       <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Fecha límite</p>
       <p class="text-sm font-medium text-foreground">{{ project.end_date or '—' }}</p>
     </div>
+    {% if project.tags %}
+    <div class="col-span-1 md:col-span-2 space-y-1 pt-2 border-t border-border/50">
+      <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Etiquetas</p>
+      <div class="flex flex-wrap gap-2">
+        {% for t in project.tags %}
+        <span class="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">{{ t.name }}</span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
     {% if project.description %}
     <div class="col-span-1 md:col-span-2 space-y-1 pt-2 border-t border-border/50">
       <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Descripción</p>

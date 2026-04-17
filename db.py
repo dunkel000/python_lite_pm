@@ -1,5 +1,7 @@
+import re
 import sqlite3
 import os
+import unicodedata
 from datetime import datetime
 from pathlib import Path
 
@@ -83,9 +85,73 @@ def init_db():
                 new_status TEXT,
                 changed_at TEXT DEFAULT (datetime('now'))
             );
+
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                email TEXT NOT NULL UNIQUE,
+                created_at TEXT DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS tags (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                color TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS project_tags (
+                project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+                PRIMARY KEY (project_id, tag_id)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_project_tags_tag_id ON project_tags(tag_id);
         """)
+        _migrate_users_and_tags(conn)
     _seed_if_empty(conn)
     conn.close()
+
+
+def _slugify_email_local(name: str) -> str:
+    normalized = unicodedata.normalize("NFKD", name)
+    ascii_only = normalized.encode("ascii", "ignore").decode("ascii")
+    slug = re.sub(r"[^a-zA-Z0-9]+", ".", ascii_only).strip(".").lower()
+    return slug or "user"
+
+
+def _migrate_users_and_tags(conn):
+    cols = [row["name"] for row in conn.execute("PRAGMA table_info('projects')").fetchall()]
+    if "assigned_user_id" not in cols:
+        conn.execute(
+            "ALTER TABLE projects ADD COLUMN assigned_user_id INTEGER "
+            "REFERENCES users(id) ON DELETE SET NULL"
+        )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_projects_assigned_user_id ON projects(assigned_user_id)"
+    )
+
+    owners = conn.execute(
+        "SELECT DISTINCT owner FROM projects WHERE owner IS NOT NULL AND owner <> ''"
+    ).fetchall()
+    for row in owners:
+        name = row["owner"].strip()
+        if not name:
+            continue
+        email = f"{_slugify_email_local(name)}@placeholder.local"
+        conn.execute(
+            "INSERT OR IGNORE INTO users (name, email) VALUES (?, ?)",
+            (name, email),
+        )
+
+    conn.execute(
+        """UPDATE projects
+           SET assigned_user_id = (
+               SELECT id FROM users WHERE users.name = projects.owner
+           )
+           WHERE assigned_user_id IS NULL
+             AND owner IS NOT NULL
+             AND owner <> ''"""
+    )
 
 
 def ensure_obsidian_vault() -> Path:
@@ -163,6 +229,20 @@ def _seed_if_empty(conn):
     count = conn.execute("SELECT COUNT(*) FROM projects").fetchone()[0]
     if count > 0:
         return
+    seed_users = [
+        ("Diego", "diego@placeholder.local"),
+        ("Equipo", "equipo@placeholder.local"),
+    ]
+    for name, email in seed_users:
+        conn.execute(
+            "INSERT OR IGNORE INTO users (name, email) VALUES (?, ?)",
+            (name, email),
+        )
+    user_id_by_name = {
+        row["name"]: row["id"]
+        for row in conn.execute("SELECT id, name FROM users").fetchall()
+    }
+
     seed_projects = [
         {
             "id": "DEV-001",
@@ -170,7 +250,7 @@ def _seed_if_empty(conn):
             "description": "Automatizar el proceso de carga y validación de datos REDEC para reducir errores manuales y tiempo de procesamiento.",
             "priority": "Alta",
             "status": "En Progreso",
-            "owner": "Diego",
+            "assigned_user_id": user_id_by_name.get("Diego"),
             "start_date": "2026-01-15",
             "end_date": "2026-04-30",
             "percent_complete": 45,
@@ -181,7 +261,7 @@ def _seed_if_empty(conn):
             "description": "Generar reportes automáticos de cartera para clientes de Activos Privados con datos en tiempo real.",
             "priority": "Alta",
             "status": "Pendiente",
-            "owner": "Diego",
+            "assigned_user_id": user_id_by_name.get("Diego"),
             "start_date": "2026-03-01",
             "end_date": "2026-06-15",
             "percent_complete": 10,
@@ -192,7 +272,7 @@ def _seed_if_empty(conn):
             "description": "Sistema de alertas automáticas para vencimientos de instrumentos en cartera.",
             "priority": "Media",
             "status": "Backlog",
-            "owner": "Equipo",
+            "assigned_user_id": user_id_by_name.get("Equipo"),
             "start_date": "2026-05-01",
             "end_date": "2026-07-31",
             "percent_complete": 0,
@@ -203,7 +283,7 @@ def _seed_if_empty(conn):
             "description": "Reconciliación automática de posiciones con custodios externos para detectar discrepancias.",
             "priority": "Alta",
             "status": "Bloqueado",
-            "owner": "Diego",
+            "assigned_user_id": user_id_by_name.get("Diego"),
             "start_date": "2026-02-01",
             "end_date": "2026-05-15",
             "percent_complete": 30,
@@ -214,7 +294,7 @@ def _seed_if_empty(conn):
             "description": "Estandarizar los templates de informes regulatorios para la CMF con validación automática.",
             "priority": "Baja",
             "status": "Completado",
-            "owner": "Equipo",
+            "assigned_user_id": user_id_by_name.get("Equipo"),
             "start_date": "2025-11-01",
             "end_date": "2026-02-28",
             "percent_complete": 100,
@@ -222,10 +302,10 @@ def _seed_if_empty(conn):
     ]
     for p in seed_projects:
         conn.execute(
-            """INSERT INTO projects (id, name, description, priority, status, owner,
-               start_date, end_date, percent_complete)
-               VALUES (:id, :name, :description, :priority, :status, :owner,
-               :start_date, :end_date, :percent_complete)""",
+            """INSERT INTO projects (id, name, description, priority, status,
+               assigned_user_id, start_date, end_date, percent_complete)
+               VALUES (:id, :name, :description, :priority, :status,
+               :assigned_user_id, :start_date, :end_date, :percent_complete)""",
             p,
         )
     conn.commit()
@@ -234,53 +314,96 @@ def _seed_if_empty(conn):
 
 # ── Projects ──────────────────────────────────────────────────────────────────
 
-def get_all_projects(status: str = None, priority: str = None):
+_PROJECT_SELECT = """
+    SELECT p.*, u.name AS assigned_user_name, u.email AS assigned_user_email
+    FROM projects p
+    LEFT JOIN users u ON u.id = p.assigned_user_id
+"""
+
+
+def _attach_tags(conn, project: dict) -> dict:
+    project["tags"] = [
+        dict(r)
+        for r in conn.execute(
+            """SELECT t.id, t.name, t.color
+               FROM project_tags pt JOIN tags t ON t.id = pt.tag_id
+               WHERE pt.project_id = ?
+               ORDER BY t.name""",
+            (project["id"],),
+        ).fetchall()
+    ]
+    return project
+
+
+def get_all_projects(
+    status: str = None,
+    priority: str = None,
+    assigned_user_id: int = None,
+    tag_id: int = None,
+):
     conn = get_conn()
-    query = "SELECT * FROM projects WHERE 1=1"
+    query = _PROJECT_SELECT + " WHERE 1=1"
     params = []
     if status:
-        query += " AND status = ?"
+        query += " AND p.status = ?"
         params.append(status)
     if priority:
-        query += " AND priority = ?"
+        query += " AND p.priority = ?"
         params.append(priority)
-    query += " ORDER BY created_at DESC"
+    if assigned_user_id is not None:
+        query += " AND p.assigned_user_id = ?"
+        params.append(assigned_user_id)
+    if tag_id is not None:
+        query += (
+            " AND EXISTS (SELECT 1 FROM project_tags pt "
+            "WHERE pt.project_id = p.id AND pt.tag_id = ?)"
+        )
+        params.append(tag_id)
+    query += " ORDER BY p.created_at DESC"
     rows = conn.execute(query, params).fetchall()
+    projects = [_attach_tags(conn, dict(r)) for r in rows]
     conn.close()
-    return [dict(r) for r in rows]
+    return projects
 
 
 def get_project(project_id: str):
     conn = get_conn()
-    row = conn.execute("SELECT * FROM projects WHERE id = ?", (project_id,)).fetchone()
+    row = conn.execute(
+        _PROJECT_SELECT + " WHERE p.id = ?", (project_id,)
+    ).fetchone()
+    project = _attach_tags(conn, dict(row)) if row else None
     conn.close()
-    return dict(row) if row else None
+    return project
 
 
 def create_project(data: dict):
+    tag_names = data.get("tag_names") or []
     conn = get_conn()
     with conn:
         conn.execute(
-            """INSERT INTO projects (id, name, description, priority, status, owner,
-               start_date, end_date, percent_complete)
-               VALUES (:id, :name, :description, :priority, :status, :owner,
-               :start_date, :end_date, :percent_complete)""",
+            """INSERT INTO projects (id, name, description, priority, status,
+               assigned_user_id, start_date, end_date, percent_complete)
+               VALUES (:id, :name, :description, :priority, :status,
+               :assigned_user_id, :start_date, :end_date, :percent_complete)""",
             data,
         )
         conn.execute(
             "INSERT INTO status_log (project_id, old_status, new_status) VALUES (?, ?, ?)",
             (data["id"], None, data.get("status")),
         )
+        _set_project_tags_tx(conn, data["id"], tag_names)
     conn.close()
 
 
 def update_project(project_id: str, data: dict):
     current = get_project(project_id)
+    tag_names = data.get("tag_names")
     conn = get_conn()
     with conn:
         conn.execute(
             """UPDATE projects SET name=:name, description=:description, priority=:priority,
-               status=:status, owner=:owner, start_date=:start_date, end_date=:end_date,
+               status=:status, assigned_user_id=:assigned_user_id,
+               start_date=:start_date, end_date=:end_date,
                percent_complete=:percent_complete, updated_at=datetime('now')
                WHERE id=:id""",
             {**data, "id": project_id},
@@ -290,6 +413,8 @@ def update_project(project_id: str, data: dict):
                 "INSERT INTO status_log (project_id, old_status, new_status) VALUES (?, ?, ?)",
                 (project_id, current["status"], data["status"]),
             )
+        if tag_names is not None:
+            _set_project_tags_tx(conn, project_id, tag_names)
     conn.close()
 
 
@@ -407,6 +532,135 @@ def get_status_log(project_id: str):
     conn = get_conn()
     rows = conn.execute(
         "SELECT * FROM status_log WHERE project_id = ? ORDER BY changed_at DESC",
+        (project_id,),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+# ── Users ─────────────────────────────────────────────────────────────────────
+
+def list_users():
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT id, name, email, created_at FROM users ORDER BY name COLLATE NOCASE"
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_user(user_id: int):
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT id, name, email, created_at FROM users WHERE id = ?",
+        (user_id,),
+    ).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_user_by_email(email: str):
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT id, name, email, created_at FROM users WHERE email = ?",
+        (email,),
+    ).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def create_user(name: str, email: str) -> int:
+    conn = get_conn()
+    try:
+        with conn:
+            cur = conn.execute(
+                "INSERT INTO users (name, email) VALUES (?, ?)",
+                (name, email),
+            )
+            return cur.lastrowid
+    finally:
+        conn.close()
+
+
+def update_user(user_id: int, name: str, email: str) -> None:
+    conn = get_conn()
+    try:
+        with conn:
+            conn.execute(
+                "UPDATE users SET name = ?, email = ? WHERE id = ?",
+                (name, email, user_id),
+            )
+    finally:
+        conn.close()
+
+
+def delete_user(user_id: int) -> None:
+    conn = get_conn()
+    with conn:
+        conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    conn.close()
+
+
+# ── Tags ──────────────────────────────────────────────────────────────────────
+
+def list_tags():
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT id, name, color FROM tags ORDER BY name COLLATE NOCASE"
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def _get_or_create_tag_tx(conn, name: str) -> int:
+    normalized = name.strip()
+    if not normalized:
+        return 0
+    row = conn.execute(
+        "SELECT id FROM tags WHERE LOWER(name) = LOWER(?)",
+        (normalized,),
+    ).fetchone()
+    if row:
+        return row["id"]
+    cur = conn.execute(
+        "INSERT INTO tags (name) VALUES (?)",
+        (normalized,),
+    )
+    return cur.lastrowid
+
+
+def _set_project_tags_tx(conn, project_id: str, tag_names):
+    conn.execute("DELETE FROM project_tags WHERE project_id = ?", (project_id,))
+    seen = set()
+    for raw in tag_names:
+        name = (raw or "").strip()
+        if not name:
+            continue
+        key = name.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        tag_id = _get_or_create_tag_tx(conn, name)
+        conn.execute(
+            "INSERT OR IGNORE INTO project_tags (project_id, tag_id) VALUES (?, ?)",
+            (project_id, tag_id),
+        )
+
+
+def set_project_tags(project_id: str, tag_names):
+    conn = get_conn()
+    with conn:
+        _set_project_tags_tx(conn, project_id, tag_names)
+    conn.close()
+
+
+def get_project_tags(project_id: str):
+    conn = get_conn()
+    rows = conn.execute(
+        """SELECT t.id, t.name, t.color
+           FROM project_tags pt JOIN tags t ON t.id = pt.tag_id
+           WHERE pt.project_id = ?
+           ORDER BY t.name""",
         (project_id,),
     ).fetchall()
     conn.close()

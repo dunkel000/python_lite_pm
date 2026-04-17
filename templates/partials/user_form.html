@@ -1,0 +1,58 @@
+{% set is_edit = user is defined and user %}
+<div class="p-6">
+  <div class="flex items-center justify-between mb-6">
+    <h2 class="text-lg font-semibold text-foreground">
+      {% if is_edit %}Editar Usuario{% else %}Nuevo Usuario{% endif %}
+    </h2>
+    <button onclick="closeModal()" class="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-accent">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+    </button>
+  </div>
+
+  <form {% if is_edit %}
+          hx-put="/users/{{ user.id }}"
+        {% else %}
+          hx-post="/users"
+        {% endif %}
+        hx-target="#user-table-container"
+        hx-swap="innerHTML"
+        hx-on::after-request="
+          if(event.detail.successful){
+            closeModal();
+          }
+        "
+        class="space-y-5">
+
+    <div>
+      <label class="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Nombre <span class="text-destructive">*</span></label>
+      <input type="text" name="name"
+             value="{{ user.name if is_edit else '' }}"
+             placeholder="Diego Pérez"
+             class="w-full text-sm border border-input rounded-md px-3 py-2 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 transition-all"
+             required />
+    </div>
+
+    <div>
+      <label class="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Email corporativo <span class="text-destructive">*</span></label>
+      <input type="email" name="email"
+             value="{{ user.email if is_edit else '' }}"
+             placeholder="diego@empresa.cl"
+             class="w-full text-sm border border-input rounded-md px-3 py-2 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 transition-all"
+             required />
+      <p class="text-xs text-muted-foreground mt-1">Debe ser único.</p>
+    </div>
+
+    <div class="flex flex-col-reverse md:flex-row gap-3 pt-4 border-t border-border">
+      <button type="button" onclick="closeModal()"
+              class="flex-1 px-4 py-2 text-sm font-medium text-foreground bg-secondary hover:bg-secondary/80 rounded-md transition-colors border border-border">
+        Cancelar
+      </button>
+      <button type="submit"
+              class="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium py-2 rounded-md transition-shadow shadow-sm">
+        {% if is_edit %}Guardar cambios{% else %}Crear usuario{% endif %}
+      </button>
+    </div>
+  </form>
+</div>
