@@ -53,3 +53,40 @@ def create_decision(
         "partials/decisions_inline.html",
         {"decisions": decisions, "project_id": project_id},
     )
+
+
+@router.put("/projects/{project_id}/decisions/{decision_id}", response_class=HTMLResponse)
+def update_decision(
+    request: Request,
+    project_id: str,
+    decision_id: int,
+    decision: str = Form(...),
+    context: str = Form(""),
+    decided_by: str = Form(""),
+):
+    db.update_decision(
+        project_id,
+        decision_id,
+        {
+            "decision": decision.strip(),
+            "context": context.strip(),
+            "decided_by": decided_by.strip(),
+        },
+    )
+    decisions = db.get_decisions(project_id)
+    return templates.TemplateResponse(
+        request,
+        "partials/decisions_inline.html",
+        {"decisions": decisions, "project_id": project_id},
+    )
+
+
+@router.delete("/projects/{project_id}/decisions/{decision_id}", response_class=HTMLResponse)
+def delete_decision(request: Request, project_id: str, decision_id: int):
+    db.delete_decision(project_id, decision_id)
+    decisions = db.get_decisions(project_id)
+    return templates.TemplateResponse(
+        request,
+        "partials/decisions_inline.html",
+        {"decisions": decisions, "project_id": project_id},
+    )

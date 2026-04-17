@@ -19,7 +19,7 @@
           <div class="flex items-baseline gap-2">
             <span class="text-xs font-mono text-muted-foreground uppercase tracking-tighter">{{ p.id }}</span>
             <button class="text-sm font-semibold text-foreground group-hover:text-primary transition-colors text-left"
-                    hx-get="/partials/project-detail/{{ p.id }}"
+                    hx-get="/projects/{{ p.id }}"
                     hx-target="#modal-content">
               {{ p.name }}
             </button>
