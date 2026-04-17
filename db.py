@@ -31,6 +31,10 @@ OBSIDIAN_DIRNAME = ".obsidian"
 OBSIDIAN_NOTES_DIRNAME = "project_descriptions"
 
 
+class UserNotFoundError(Exception):
+    pass
+
+
 def get_db_path() -> str:
     configured_path = os.getenv("SQLITE_DB_PATH", DEFAULT_DB_PATH)
     return os.path.abspath(os.path.expanduser(configured_path))
@@ -586,19 +590,25 @@ def update_user(user_id: int, name: str, email: str) -> None:
     conn = get_conn()
     try:
         with conn:
-            conn.execute(
+            cur = conn.execute(
                 "UPDATE users SET name = ?, email = ? WHERE id = ?",
                 (name, email, user_id),
             )
+            if cur.rowcount == 0:
+                raise UserNotFoundError(f"User with id {user_id} not found.")
     finally:
         conn.close()
 
 
 def delete_user(user_id: int) -> None:
     conn = get_conn()
-    with conn:
-        conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
-    conn.close()
+    try:
+        with conn:
+            cur = conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+            if cur.rowcount == 0:
+                raise UserNotFoundError(f"User with id {user_id} not found.")
+    finally:
+        conn.close()
 
 
 # ── Tags ──────────────────────────────────────────────────────────────────────
