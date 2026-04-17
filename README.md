@@ -29,6 +29,31 @@ python main.py
 
 El servidor levanta en http://localhost:8000
 
+### Mover/copiar la base de datos creada en el primer inicio
+
+Sí: este proyecto usa **SQLite** y crea el archivo automáticamente en el primer arranque.
+
+Si ya levantaste la app una vez y quieres mover la base a otra ruta:
+
+```bash
+# 1. Ejecuta una vez para crear la DB inicial (si aún no existe)
+python main.py
+
+# 2. Detén la app y crea la carpeta destino
+mkdir -p /opt/lite_pm_data
+
+# 3. Copia la base actual a la nueva ubicación
+cp data/tracker.db /opt/lite_pm_data/tracker.db
+
+# 4. Configura la nueva ruta en .env
+echo "SQLITE_DB_PATH=/opt/lite_pm_data/tracker.db" > .env
+
+# 5. Levanta nuevamente la app usando la nueva ruta
+python main.py
+```
+
+> Nota: si quieres **mover** en vez de copiar, usa `mv` en lugar de `cp`.
+
 ## Configurar la ruta de la base de datos
 
 Puedes definir una ubicación personalizada para SQLite con la variable de entorno `SQLITE_DB_PATH`.
