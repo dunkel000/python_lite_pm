@@ -53,20 +53,48 @@ def _gantt_project_data(projects, weeks):
 
 # ── Pages ─────────────────────────────────────────────────────────────────────
 
+def _parse_int(value: str):
+    if value is None or value == "":
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        return None
+
+
 @router.get("/", response_class=HTMLResponse)
 def dashboard(request: Request):
     projects = db.get_all_projects()
     stats = db.get_stats()
+    users_list = db.list_users()
+    tags_list = db.list_tags()
     return templates.TemplateResponse(
         request,
         "dashboard.html",
-        {"projects": projects, "stats": stats, "active_page": "dashboard"},
+        {
+            "projects": projects,
+            "stats": stats,
+            "users": users_list,
+            "tags": tags_list,
+            "active_page": "dashboard",
+        },
     )
 
 
 @router.get("/gantt", response_class=HTMLResponse)
-def gantt_page(request: Request, status: str = "", priority: str = ""):
-    projects = db.get_all_projects(status or None, priority or None)
+def gantt_page(
+    request: Request,
+    status: str = "",
+    priority: str = "",
+    assigned_user_id: str = "",
+    tag_id: str = "",
+):
+    projects = db.get_all_projects(
+        status or None,
+        priority or None,
+        _parse_int(assigned_user_id),
+        _parse_int(tag_id),
+    )
     weeks = _compute_gantt_weeks()
     gantt_data = _gantt_project_data(projects, weeks)
     return templates.TemplateResponse(
@@ -78,6 +106,10 @@ def gantt_page(request: Request, status: str = "", priority: str = ""):
             "active_page": "gantt",
             "filter_status": status,
             "filter_priority": priority,
+            "filter_user": assigned_user_id,
+            "filter_tag": tag_id,
+            "users": db.list_users(),
+            "tags": db.list_tags(),
         },
     )
 
@@ -85,8 +117,19 @@ def gantt_page(request: Request, status: str = "", priority: str = ""):
 # ── Partials ──────────────────────────────────────────────────────────────────
 
 @router.get("/partials/project-table", response_class=HTMLResponse)
-def partial_project_table(request: Request, status: str = "", priority: str = ""):
-    projects = db.get_all_projects(status or None, priority or None)
+def partial_project_table(
+    request: Request,
+    status: str = "",
+    priority: str = "",
+    assigned_user_id: str = "",
+    tag_id: str = "",
+):
+    projects = db.get_all_projects(
+        status or None,
+        priority or None,
+        _parse_int(assigned_user_id),
+        _parse_int(tag_id),
+    )
     return templates.TemplateResponse(
         request,
         "partials/project_table.html",
@@ -108,16 +151,35 @@ def partial_stats(request: Request):
 def partial_project_form(request: Request, id: str = ""):
     project = db.get_project(id) if id else None
     next_id = db.next_project_id()
+    current_tags = (
+        ", ".join(t["name"] for t in project["tags"]) if project else ""
+    )
     return templates.TemplateResponse(
         request,
         "partials/project_form.html",
-        {"project": project, "next_id": next_id},
+        {
+            "project": project,
+            "next_id": next_id,
+            "users": db.list_users(),
+            "current_tags": current_tags,
+        },
     )
 
 
 @router.get("/partials/gantt-chart", response_class=HTMLResponse)
-def partial_gantt_chart(request: Request, status: str = "", priority: str = ""):
-    projects = db.get_all_projects(status or None, priority or None)
+def partial_gantt_chart(
+    request: Request,
+    status: str = "",
+    priority: str = "",
+    assigned_user_id: str = "",
+    tag_id: str = "",
+):
+    projects = db.get_all_projects(
+        status or None,
+        priority or None,
+        _parse_int(assigned_user_id),
+        _parse_int(tag_id),
+    )
     weeks = _compute_gantt_weeks()
     gantt_data = _gantt_project_data(projects, weeks)
     return templates.TemplateResponse(
@@ -145,6 +207,10 @@ def project_detail(request: Request, project_id: str):
 
 # ── CRUD ──────────────────────────────────────────────────────────────────────
 
+def _parse_tags(raw: str):
+    return [t.strip() for t in (raw or "").split(",") if t.strip()]
+
+
 @router.post("/projects", response_class=HTMLResponse)
 def create_project(
     request: Request,
@@ -154,7 +220,8 @@ def create_project(
     create_description_md: str = Form(""),
     priority: str = Form("Media"),
     status: str = Form("Backlog"),
-    owner: str = Form(""),
+    assigned_user_id: str = Form(""),
+    tags: str = Form(""),
     start_date: str = Form(""),
     end_date: str = Form(""),
     percent_complete: int = Form(0),
@@ -165,10 +232,11 @@ def create_project(
         "description": description.strip(),
         "priority": priority,
         "status": status,
-        "owner": owner.strip(),
+        "assigned_user_id": _parse_int(assigned_user_id),
         "start_date": start_date or None,
         "end_date": end_date or None,
         "percent_complete": percent_complete,
+        "tag_names": _parse_tags(tags),
     }
     db.create_project(project_data)
 
@@ -195,7 +263,8 @@ def update_project(
     description: str = Form(""),
     priority: str = Form("Media"),
     status: str = Form("Backlog"),
-    owner: str = Form(""),
+    assigned_user_id: str = Form(""),
+    tags: str = Form(""),
     start_date: str = Form(""),
     end_date: str = Form(""),
     percent_complete: int = Form(0),
@@ -207,10 +276,11 @@ def update_project(
             "description": description.strip(),
             "priority": priority,
             "status": status,
-            "owner": owner.strip(),
+            "assigned_user_id": _parse_int(assigned_user_id),
             "start_date": start_date or None,
             "end_date": end_date or None,
             "percent_complete": percent_complete,
+            "tag_names": _parse_tags(tags),
         },
     )
     projects = db.get_all_projects()
@@ -257,25 +327,33 @@ def graph_data():
             "name": p["name"],
             "status": p["status"],
             "priority": p["priority"],
-            "owner": p["owner"] or "",
+            "assigned_user_id": p.get("assigned_user_id"),
+            "assigned_user_name": p.get("assigned_user_name") or "",
+            "assigned_user_email": p.get("assigned_user_email") or "",
             "percent": p["percent_complete"],
         })
 
-    # Build owner-based edges: projects sharing same owner get a link
-    owner_map: dict = {}
+    user_map: dict = {}
+    user_name_by_id: dict = {}
     for p in projects:
-        o = p["owner"] or ""
-        if o:
-            owner_map.setdefault(o, []).append(p["id"])
+        uid = p.get("assigned_user_id")
+        if uid:
+            user_map.setdefault(uid, []).append(p["id"])
+            user_name_by_id[uid] = p.get("assigned_user_name") or ""
 
     seen = set()
-    for owner, ids in owner_map.items():
+    for uid, ids in user_map.items():
         for i in range(len(ids)):
             for j in range(i + 1, len(ids)):
                 key = tuple(sorted([ids[i], ids[j]]))
                 if key not in seen:
                     seen.add(key)
-                    links.append({"source": ids[i], "target": ids[j], "owner": owner})
+                    links.append({
+                        "source": ids[i],
+                        "target": ids[j],
+                        "user_id": uid,
+                        "user_name": user_name_by_id.get(uid, ""),
+                    })
 
     return JSONResponse({"nodes": nodes, "links": links})
 

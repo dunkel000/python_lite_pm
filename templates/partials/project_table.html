@@ -26,14 +26,24 @@
           </div>
         </td>
         <td class="px-6 py-4 text-sm text-foreground">
-          {{ p.owner or '—' }}
+          {% if p.assigned_user_name %}
+            <span class="font-medium" title="{{ p.assigned_user_email }}">{{ p.assigned_user_name }}</span>
+            <div class="text-[10px] text-muted-foreground">{{ p.assigned_user_email }}</div>
+          {% else %}—{% endif %}
+          {% if p.tags %}
+          <div class="flex flex-wrap gap-1 mt-1.5">
+            {% for t in p.tags %}
+            <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">{{ t.name }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
         </td>
         <td class="px-6 py-4">
           <select name="status"
                   hx-patch="/projects/{{ p.id }}/status"
                   hx-target="#stats-container"
                   hx-swap="innerHTML"
-                  hx-on::after-request="htmx.ajax('GET','/partials/project-table',{target:'#project-table-container'})"
+                  hx-on::after-request="htmx.ajax('GET','/partials/project-table',{target:'#project-table-container', values:{status:document.getElementById('filter-status')?.value||'', priority:document.getElementById('filter-priority')?.value||'', assigned_user_id:document.getElementById('filter-user')?.value||'', tag_id:document.getElementById('filter-tag')?.value||''}})"
                   class="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border border-border bg-secondary text-secondary-foreground cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring transition-all hover:bg-secondary/70">
             {% for s in ['Backlog','Pendiente','En Progreso','Bloqueado','Completado'] %}
             <option value="{{ s }}" {% if p.status == s %}selected{% endif %}>{{ s }}</option>
