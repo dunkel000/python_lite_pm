@@ -65,6 +65,21 @@
                 class="w-full text-sm border border-input rounded-md px-3 py-2 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 transition-all resize-none">{{ project.description if is_edit else '' }}</textarea>
     </div>
 
+    {% if not is_edit %}
+    <div class="rounded-md border border-border bg-muted/40 p-3">
+      <label class="flex items-start gap-2 text-sm text-foreground cursor-pointer">
+        <input type="checkbox" name="create_description_md"
+               class="mt-0.5 h-4 w-4 rounded border-input text-primary focus:ring-ring" />
+        <span>
+          Crear descripción en <strong>Markdown</strong> (compatible con Obsidian) en la misma ruta donde vive la base SQLite.
+        </span>
+      </label>
+      <p class="text-xs text-muted-foreground mt-2">
+        Se creará una nota con template inicial en <code>project_descriptions/&lt;ID&gt;.md</code> y estructura mínima del vault.
+      </p>
+    </div>
+    {% endif %}
+
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <!-- Priority -->
       <div>

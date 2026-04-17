@@ -151,6 +151,7 @@ def create_project(
     id: str = Form(...),
     name: str = Form(...),
     description: str = Form(""),
+    create_description_md: str = Form(""),
     priority: str = Form("Media"),
     status: str = Form("Backlog"),
     owner: str = Form(""),
@@ -158,19 +159,26 @@ def create_project(
     end_date: str = Form(""),
     percent_complete: int = Form(0),
 ):
-    db.create_project(
-        {
-            "id": id.strip(),
-            "name": name.strip(),
-            "description": description.strip(),
-            "priority": priority,
-            "status": status,
-            "owner": owner.strip(),
-            "start_date": start_date or None,
-            "end_date": end_date or None,
-            "percent_complete": percent_complete,
-        }
-    )
+    project_data = {
+        "id": id.strip(),
+        "name": name.strip(),
+        "description": description.strip(),
+        "priority": priority,
+        "status": status,
+        "owner": owner.strip(),
+        "start_date": start_date or None,
+        "end_date": end_date or None,
+        "percent_complete": percent_complete,
+    }
+    db.create_project(project_data)
+
+    if create_description_md:
+        md_path = db.create_project_description_note(project_data)
+        if not project_data["description"]:
+            db.update_project(
+                project_data["id"],
+                {**project_data, "description": f"Nota Obsidian: {md_path}"},
+            )
     projects = db.get_all_projects()
     return templates.TemplateResponse(
         request,

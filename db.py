@@ -1,6 +1,7 @@
 import sqlite3
 import os
 from datetime import datetime
+from pathlib import Path
 
 
 def load_local_env(env_path: str = ".env") -> None:
@@ -24,11 +25,17 @@ def load_local_env(env_path: str = ".env") -> None:
 load_local_env()
 
 DEFAULT_DB_PATH = os.path.join(os.path.dirname(__file__), "data", "tracker.db")
+OBSIDIAN_DIRNAME = ".obsidian"
+OBSIDIAN_NOTES_DIRNAME = "project_descriptions"
 
 
 def get_db_path() -> str:
     configured_path = os.getenv("SQLITE_DB_PATH", DEFAULT_DB_PATH)
     return os.path.abspath(os.path.expanduser(configured_path))
+
+
+def get_db_dir() -> str:
+    return os.path.dirname(get_db_path())
 
 
 def get_conn():
@@ -40,7 +47,7 @@ def get_conn():
 
 
 def init_db():
-    db_dir = os.path.dirname(get_db_path())
+    db_dir = get_db_dir()
     if db_dir:
         os.makedirs(db_dir, exist_ok=True)
     conn = get_conn()
@@ -79,6 +86,77 @@ def init_db():
         """)
     _seed_if_empty(conn)
     conn.close()
+
+
+def ensure_obsidian_vault() -> Path:
+    """
+    Prepara una estructura mínima para que el directorio de la DB funcione como vault de Obsidian.
+    """
+    vault_dir = Path(get_db_dir())
+    vault_dir.mkdir(parents=True, exist_ok=True)
+
+    obsidian_dir = vault_dir / OBSIDIAN_DIRNAME
+    obsidian_dir.mkdir(exist_ok=True)
+
+    app_json = obsidian_dir / "app.json"
+    if not app_json.exists():
+        app_json.write_text('{\n  "legacyEditor": false\n}\n', encoding="utf-8")
+
+    core_plugins_json = obsidian_dir / "core-plugins.json"
+    if not core_plugins_json.exists():
+        core_plugins_json.write_text("[]\n", encoding="utf-8")
+
+    (vault_dir / OBSIDIAN_NOTES_DIRNAME).mkdir(exist_ok=True)
+    return vault_dir
+
+
+def _description_note_template(project: dict) -> str:
+    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+    return f"""---
+project_id: {project['id']}
+name: {project['name']}
+status: {project.get('status') or ''}
+priority: {project.get('priority') or ''}
+owner: {project.get('owner') or ''}
+created_at: {now}
+---
+
+# {project['name']}
+
+## Resumen
+> Describe el objetivo general del proyecto.
+
+## Alcance
+- Entregable 1
+- Entregable 2
+
+## Hitos
+- [ ] Hito inicial
+- [ ] Hito intermedio
+- [ ] Hito final
+
+## Riesgos / Bloqueos
+- Ninguno por ahora.
+
+## Enlaces
+- Proyecto en tracker: `{project['id']}`
+"""
+
+
+def create_project_description_note(project: dict) -> str:
+    """
+    Crea un archivo markdown para la descripción del proyecto dentro del directorio
+    donde vive la DB (vault Obsidian).
+    Devuelve la ruta absoluta del archivo.
+    """
+    vault_dir = ensure_obsidian_vault()
+    notes_dir = vault_dir / OBSIDIAN_NOTES_DIRNAME
+    note_path = notes_dir / f"{project['id']}.md"
+
+    if not note_path.exists():
+        note_path.write_text(_description_note_template(project), encoding="utf-8")
+
+    return str(note_path.resolve())
 
 
 def _seed_if_empty(conn):
