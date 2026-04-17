@@ -164,6 +164,15 @@ python_lite_pm/
 
 La base de datos se crea automáticamente al iniciar el servidor. La ruta se toma desde `SQLITE_DB_PATH` o, por defecto, `data/tracker.db`. Incluye 5 proyectos de ejemplo pre-cargados.
 
+### Descripciones Markdown para Obsidian
+
+Al crear un proyecto desde la UI, puedes marcar la opción para generar una descripción en Markdown.
+
+- La nota se crea en la misma ruta de la DB SQLite.
+- Archivo generado: `project_descriptions/<ID_DEL_PROYECTO>.md`.
+- Si no existe estructura de vault, se crea una mínima compatible con Obsidian (`.obsidian/app.json` y `.obsidian/core-plugins.json`).
+- La nota arranca con una plantilla base (frontmatter + secciones de resumen, alcance, hitos y riesgos).
+
 Para resetear la base de datos:
 
 ```bash
