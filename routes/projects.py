@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 import json
+import sqlite3
 
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -52,6 +53,15 @@ def _gantt_project_data(projects, weeks):
 
 
 # ── Pages ─────────────────────────────────────────────────────────────────────
+
+def _error_fragment(message: str) -> HTMLResponse:
+    html = (
+        '<div class="p-4 text-sm text-destructive bg-destructive/10 '
+        'border border-destructive/30 rounded-md">'
+        f"{message}"
+        "</div>"
+    )
+    return HTMLResponse(html, status_code=400)
 
 def _parse_int(value: str):
     if value is None or value == "":
@@ -226,19 +236,26 @@ def create_project(
     end_date: str = Form(""),
     percent_complete: int = Form(0),
 ):
+    parsed_assigned_user_id = _parse_int(assigned_user_id)
+    if parsed_assigned_user_id is not None and not db.get_user(parsed_assigned_user_id):
+        return _error_fragment("El usuario asignado no es válido o ya no existe.")
+
     project_data = {
         "id": id.strip(),
         "name": name.strip(),
         "description": description.strip(),
         "priority": priority,
         "status": status,
-        "assigned_user_id": _parse_int(assigned_user_id),
+        "assigned_user_id": parsed_assigned_user_id,
         "start_date": start_date or None,
         "end_date": end_date or None,
         "percent_complete": percent_complete,
         "tag_names": _parse_tags(tags),
     }
-    db.create_project(project_data)
+    try:
+        db.create_project(project_data)
+    except sqlite3.IntegrityError:
+        return _error_fragment("El usuario asignado no es válido o ya no existe.")
 
     if create_description_md:
         md_path = db.create_project_description_note(project_data)
@@ -269,20 +286,27 @@ def update_project(
     end_date: str = Form(""),
     percent_complete: int = Form(0),
 ):
-    db.update_project(
-        project_id,
-        {
-            "name": name.strip(),
-            "description": description.strip(),
-            "priority": priority,
-            "status": status,
-            "assigned_user_id": _parse_int(assigned_user_id),
-            "start_date": start_date or None,
-            "end_date": end_date or None,
-            "percent_complete": percent_complete,
-            "tag_names": _parse_tags(tags),
-        },
-    )
+    parsed_assigned_user_id = _parse_int(assigned_user_id)
+    if parsed_assigned_user_id is not None and not db.get_user(parsed_assigned_user_id):
+        return _error_fragment("El usuario asignado no es válido o ya no existe.")
+
+    try:
+        db.update_project(
+            project_id,
+            {
+                "name": name.strip(),
+                "description": description.strip(),
+                "priority": priority,
+                "status": status,
+                "assigned_user_id": parsed_assigned_user_id,
+                "start_date": start_date or None,
+                "end_date": end_date or None,
+                "percent_complete": percent_complete,
+                "tag_names": _parse_tags(tags),
+            },
+        )
+    except sqlite3.IntegrityError:
+        return _error_fragment("El usuario asignado no es válido o ya no existe.")
     projects = db.get_all_projects()
     return templates.TemplateResponse(
         request,
