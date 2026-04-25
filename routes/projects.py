@@ -11,8 +11,8 @@ from security import csrf_token
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
-ALLOWED_PRIORITIES = {"Alta", "Media", "Baja"}
-ALLOWED_STATUSES = {"Backlog", "Pendiente", "En Progreso", "Bloqueado", "Completado"}
+ALLOWED_PRIORITIES = set(db.PROJECT_PRIORITIES)
+ALLOWED_STATUSES = set(db.PROJECT_STATUSES)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

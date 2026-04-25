@@ -29,6 +29,8 @@ load_local_env()
 DEFAULT_DB_PATH = os.path.join(os.path.dirname(__file__), "data", "tracker.db")
 OBSIDIAN_DIRNAME = ".obsidian"
 OBSIDIAN_NOTES_DIRNAME = "project_descriptions"
+PROJECT_PRIORITIES = ("Alta", "Media", "Baja")
+PROJECT_STATUSES = ("Backlog", "Pendiente", "En Progreso", "Bloqueado", "Completado")
 
 
 class UserNotFoundError(Exception):
@@ -37,6 +39,11 @@ class UserNotFoundError(Exception):
 
 class DecisionNotFoundError(Exception):
     pass
+
+
+def _sql_in_list(values: tuple[str, ...]) -> str:
+    escaped = [value.replace("'", "''") for value in values]
+    return "(" + ",".join(f"'{value}'" for value in escaped) + ")"
 
 
 def get_db_path() -> str:
@@ -62,13 +69,13 @@ def init_db():
         os.makedirs(db_dir, exist_ok=True)
     conn = get_conn()
     with conn:
-        conn.executescript("""
+        conn.executescript(f"""
             CREATE TABLE IF NOT EXISTS projects (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
                 description TEXT,
-                priority TEXT CHECK(priority IN ('Alta','Media','Baja')),
-                status TEXT CHECK(status IN ('Backlog','Pendiente','En Progreso','Bloqueado','Completado')),
+                priority TEXT CHECK(priority IN {_sql_in_list(PROJECT_PRIORITIES)}),
+                status TEXT CHECK(status IN {_sql_in_list(PROJECT_STATUSES)}),
                 owner TEXT,
                 start_date TEXT,
                 end_date TEXT,
@@ -172,21 +179,18 @@ def _ensure_projects_constraints(conn):
 
     create_sql = row["sql"]
     has_percent_check = "percent_complete BETWEEN 0 AND 100" in create_sql
-    has_priority_check = "priority IN ('Alta','Media','Baja')" in create_sql
-    has_status_check = (
-        "status IN ('Backlog','Pendiente','En Progreso','Bloqueado','Completado')"
-        in create_sql
-    )
+    has_priority_check = f"priority IN {_sql_in_list(PROJECT_PRIORITIES)}" in create_sql
+    has_status_check = f"status IN {_sql_in_list(PROJECT_STATUSES)}" in create_sql
     if has_percent_check and has_priority_check and has_status_check:
         return
 
-    conn.executescript("""
+    conn.executescript(f"""
         CREATE TABLE projects_new (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
             description TEXT,
-            priority TEXT CHECK(priority IN ('Alta','Media','Baja')),
-            status TEXT CHECK(status IN ('Backlog','Pendiente','En Progreso','Bloqueado','Completado')),
+            priority TEXT CHECK(priority IN {_sql_in_list(PROJECT_PRIORITIES)}),
+            status TEXT CHECK(status IN {_sql_in_list(PROJECT_STATUSES)}),
             owner TEXT,
             start_date TEXT,
             end_date TEXT,
@@ -205,11 +209,11 @@ def _ensure_projects_constraints(conn):
             name,
             description,
             CASE
-                WHEN priority IN ('Alta','Media','Baja') THEN priority
+                WHEN priority IN {_sql_in_list(PROJECT_PRIORITIES)} THEN priority
                 ELSE 'Media'
             END,
             CASE
-                WHEN status IN ('Backlog','Pendiente','En Progreso','Bloqueado','Completado') THEN status
+                WHEN status IN {_sql_in_list(PROJECT_STATUSES)} THEN status
                 ELSE 'Backlog'
             END,
             owner,
