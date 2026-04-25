@@ -1,3 +1,5 @@
+import sqlite3
+
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -9,8 +11,24 @@ router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
 
-def _ctx(request: Request, **kwargs):
-    return {"csrf_token": csrf_token(request), **kwargs}
+def _error_fragment(message: str) -> HTMLResponse:
+    html = (
+        '<div class="p-4 text-sm text-destructive bg-destructive/10 '
+        'border border-destructive/30 rounded-md">'
+        f"{message}"
+        "</div>"
+    )
+    return HTMLResponse(html, status_code=400)
+
+
+def _not_found_fragment(message: str) -> HTMLResponse:
+    html = (
+        '<div class="p-4 text-sm text-destructive bg-destructive/10 '
+        'border border-destructive/30 rounded-md">'
+        f"{message}"
+        "</div>"
+    )
+    return HTMLResponse(html, status_code=404)
 
 
 @router.get("/decisiones", response_class=HTMLResponse)
@@ -48,11 +66,17 @@ def create_decision(
     context: str = Form(""),
     decided_by: str = Form(""),
 ):
-    db.create_decision(project_id, {
-        "decision": decision.strip(),
-        "context": context.strip(),
-        "decided_by": decided_by.strip(),
-    })
+    decision = decision.strip()
+    if not decision:
+        return _error_fragment("La decisión es obligatoria.")
+    try:
+        db.create_decision(project_id, {
+            "decision": decision,
+            "context": context.strip(),
+            "decided_by": decided_by.strip(),
+        })
+    except sqlite3.IntegrityError:
+        return _error_fragment("Proyecto inválido.")
     decisions = db.get_decisions(project_id)
     return templates.TemplateResponse(
         request,
@@ -70,15 +94,21 @@ def update_decision(
     context: str = Form(""),
     decided_by: str = Form(""),
 ):
-    db.update_decision(
-        project_id,
-        decision_id,
-        {
-            "decision": decision.strip(),
-            "context": context.strip(),
-            "decided_by": decided_by.strip(),
-        },
-    )
+    decision = decision.strip()
+    if not decision:
+        return _error_fragment("La decisión es obligatoria.")
+    try:
+        db.update_decision(
+            project_id,
+            decision_id,
+            {
+                "decision": decision,
+                "context": context.strip(),
+                "decided_by": decided_by.strip(),
+            },
+        )
+    except db.DecisionNotFoundError:
+        return _not_found_fragment("Decisión no encontrada")
     decisions = db.get_decisions(project_id)
     return templates.TemplateResponse(
         request,
@@ -89,7 +119,10 @@ def update_decision(
 
 @router.delete("/projects/{project_id}/decisions/{decision_id}", response_class=HTMLResponse)
 def delete_decision(request: Request, project_id: str, decision_id: int):
-    db.delete_decision(project_id, decision_id)
+    try:
+        db.delete_decision(project_id, decision_id)
+    except db.DecisionNotFoundError:
+        return _not_found_fragment("Decisión no encontrada")
     decisions = db.get_decisions(project_id)
     return templates.TemplateResponse(
         request,
