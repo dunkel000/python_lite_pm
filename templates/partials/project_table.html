@@ -40,11 +40,13 @@
         </td>
         <td class="px-6 py-4">
           <select name="status"
+                  data-status="{{ p.status }}"
+                  onchange="this.dataset.status=this.value"
                   hx-patch="/projects/{{ p.id }}/status"
                   hx-target="#stats-container"
                   hx-swap="innerHTML"
                   hx-on::after-request="htmx.ajax('GET','/partials/project-table',{target:'#project-table-container', values:{status:document.getElementById('filter-status')?.value||'', priority:document.getElementById('filter-priority')?.value||'', assigned_user_id:document.getElementById('filter-user')?.value||'', tag_id:document.getElementById('filter-tag')?.value||''}})"
-                  class="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border border-border bg-secondary text-secondary-foreground cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring transition-all hover:bg-secondary/70">
+                  class="status-select">
             {% for s in ['Backlog','Pendiente','En Progreso','Bloqueado','Completado'] %}
             <option value="{{ s }}" {% if p.status == s %}selected{% endif %}>{{ s }}</option>
             {% endfor %}

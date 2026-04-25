@@ -116,12 +116,19 @@
       <!-- Status -->
       <div>
         <label class="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Estado</label>
-        <select name="status"
-                class="w-full text-sm border border-input rounded-md px-3 py-2 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 transition-all">
+        <div class="flex items-center gap-2 flex-wrap">
+          {% set current_status = project.status if is_edit else 'Backlog' %}
+          {% set status_slug_map = {'Backlog':'backlog','Pendiente':'pendiente','En Progreso':'en-progreso','Bloqueado':'bloqueado','Completado':'completado'} %}
           {% for opt in ['Backlog', 'Pendiente', 'En Progreso', 'Bloqueado', 'Completado'] %}
-          <option value="{{ opt }}" {% if is_edit and project.status == opt %}selected{% elif not is_edit and opt == 'Backlog' %}selected{% endif %}>{{ opt }}</option>
+          <label class="cursor-pointer">
+            <input type="radio" name="status" value="{{ opt }}" class="sr-only peer"
+                   {% if (is_edit and project.status == opt) or (not is_edit and opt == 'Backlog') %}checked{% endif %} />
+            <span class="status-pill status-pill--{{ status_slug_map[opt] }} opacity-50 peer-checked:opacity-100 peer-checked:ring-2 peer-checked:ring-ring/50 transition-opacity">
+              {{ opt }}
+            </span>
+          </label>
           {% endfor %}
-        </select>
+        </div>
       </div>
     </div>
 
