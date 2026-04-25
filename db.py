@@ -35,6 +35,10 @@ class UserNotFoundError(Exception):
     pass
 
 
+class DecisionNotFoundError(Exception):
+    pass
+
+
 def get_db_path() -> str:
     configured_path = os.getenv("SQLITE_DB_PATH", DEFAULT_DB_PATH)
     return os.path.abspath(os.path.expanduser(configured_path))
@@ -532,30 +536,42 @@ def create_decision(project_id: str, data: dict):
 
 def update_decision(project_id: str, decision_id: int, data: dict):
     conn = get_conn()
-    with conn:
-        conn.execute(
-            """UPDATE decisions
-               SET decision = ?, context = ?, decided_by = ?
-               WHERE id = ? AND project_id = ?""",
-            (
-                data.get("decision"),
-                data.get("context"),
-                data.get("decided_by"),
-                decision_id,
-                project_id,
-            ),
-        )
-    conn.close()
+    try:
+        with conn:
+            cur = conn.execute(
+                """UPDATE decisions
+                   SET decision = ?, context = ?, decided_by = ?
+                   WHERE id = ? AND project_id = ?""",
+                (
+                    data.get("decision"),
+                    data.get("context"),
+                    data.get("decided_by"),
+                    decision_id,
+                    project_id,
+                ),
+            )
+            if cur.rowcount == 0:
+                raise DecisionNotFoundError(
+                    f"Decision with id {decision_id} for project {project_id} not found."
+                )
+    finally:
+        conn.close()
 
 
 def delete_decision(project_id: str, decision_id: int):
     conn = get_conn()
-    with conn:
-        conn.execute(
-            "DELETE FROM decisions WHERE id = ? AND project_id = ?",
-            (decision_id, project_id),
-        )
-    conn.close()
+    try:
+        with conn:
+            cur = conn.execute(
+                "DELETE FROM decisions WHERE id = ? AND project_id = ?",
+                (decision_id, project_id),
+            )
+            if cur.rowcount == 0:
+                raise DecisionNotFoundError(
+                    f"Decision with id {decision_id} for project {project_id} not found."
+                )
+    finally:
+        conn.close()
 
 
 # ── Status Log ────────────────────────────────────────────────────────────────
