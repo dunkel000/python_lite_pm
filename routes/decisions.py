@@ -3,9 +3,14 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 import db
+from security import csrf_token
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
+
+
+def _ctx(request: Request, **kwargs):
+    return {"csrf_token": csrf_token(request), **kwargs}
 
 
 @router.get("/decisiones", response_class=HTMLResponse)
@@ -15,12 +20,13 @@ def decisions_page(request: Request, project_id: str = ""):
     return templates.TemplateResponse(
         request,
         "decisions.html",
-        {
-            "decisions": decisions,
-            "projects": projects,
-            "active_page": "decisiones",
-            "filter_project": project_id,
-        },
+        _ctx(
+            request,
+            decisions=decisions,
+            projects=projects,
+            active_page="decisiones",
+            filter_project=project_id,
+        ),
     )
 
 
@@ -30,7 +36,7 @@ def partial_decisions_list(request: Request, project_id: str = ""):
     return templates.TemplateResponse(
         request,
         "partials/decisions_list.html",
-        {"decisions": decisions},
+        _ctx(request, decisions=decisions),
     )
 
 
@@ -51,7 +57,7 @@ def create_decision(
     return templates.TemplateResponse(
         request,
         "partials/decisions_inline.html",
-        {"decisions": decisions, "project_id": project_id},
+        _ctx(request, decisions=decisions, project_id=project_id),
     )
 
 
@@ -77,7 +83,7 @@ def update_decision(
     return templates.TemplateResponse(
         request,
         "partials/decisions_inline.html",
-        {"decisions": decisions, "project_id": project_id},
+        _ctx(request, decisions=decisions, project_id=project_id),
     )
 
 
@@ -88,5 +94,5 @@ def delete_decision(request: Request, project_id: str, decision_id: int):
     return templates.TemplateResponse(
         request,
         "partials/decisions_inline.html",
-        {"decisions": decisions, "project_id": project_id},
+        _ctx(request, decisions=decisions, project_id=project_id),
     )

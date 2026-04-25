@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login — Project Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
+  <div class="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-5 shadow-xl">
+    <div>
+      <p class="text-xs uppercase tracking-widest text-slate-400">Project Tracker</p>
+      <h1 class="text-xl font-bold">Acceso requerido</h1>
+      <p class="text-sm text-slate-400 mt-1">Modo de despliegue: {{ deployment_mode }}</p>
+    </div>
+
+    {% if error %}
+    <div class="text-sm text-red-300 bg-red-950/50 border border-red-800 rounded-md p-3">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="/login" class="space-y-4">
+      <input type="hidden" name="next" value="{{ next }}" />
+      <div>
+        <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1">Usuario</label>
+        <input name="username" required class="w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2" />
+      </div>
+      <div>
+        <label class="block text-xs uppercase tracking-wider text-slate-400 mb-1">Password</label>
+        <input type="password" name="password" required class="w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2" />
+      </div>
+      <button type="submit" class="w-full bg-indigo-500 hover:bg-indigo-400 text-white font-semibold rounded-md py-2">Ingresar</button>
+    </form>
+  </div>
+</body>
+</html>
