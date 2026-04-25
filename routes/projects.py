@@ -65,6 +65,21 @@ def _error_fragment(message: str) -> HTMLResponse:
     )
     return HTMLResponse(html, status_code=400)
 
+
+def _project_integrity_error_message(exc: sqlite3.IntegrityError) -> str:
+    error_text = str(exc).lower()
+    if "unique constraint failed: projects.id" in error_text:
+        return "Ya existe un proyecto con ese ID."
+    if "foreign key constraint failed" in error_text:
+        return "El usuario asignado no es válido o ya no existe."
+    if "check constraint failed" in error_text:
+        return "La prioridad, el estado o el progreso del proyecto no son válidos."
+    return (
+        "No se pudo guardar el proyecto por una restricción de base de datos. "
+        "Verifica los datos e inténtalo nuevamente."
+    )
+
+
 def _parse_int(value: str):
     if value is None or value == "":
         return None
@@ -289,8 +304,8 @@ def create_project(
     }
     try:
         db.create_project(project_data)
-    except sqlite3.IntegrityError:
-        return _error_fragment("El usuario asignado no es válido o ya no existe.")
+    except sqlite3.IntegrityError as exc:
+        return _error_fragment(_project_integrity_error_message(exc))
 
     if create_description_md:
         md_path = db.create_project_description_note(project_data)
@@ -364,8 +379,8 @@ def update_project(
                 "tag_names": _parse_tags(tags),
             },
         )
-    except sqlite3.IntegrityError:
-        return _error_fragment("El usuario asignado no es válido o ya no existe.")
+    except sqlite3.IntegrityError as exc:
+        return _error_fragment(_project_integrity_error_message(exc))
     projects = db.get_all_projects()
     return templates.TemplateResponse(
         request,
