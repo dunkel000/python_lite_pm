@@ -29,39 +29,45 @@ python main.py
 
 El servidor levanta en http://localhost:8000
 
-## Dependencias y política de compatibilidad
+## Seguridad y modo de despliegue (nuevo)
 
-- `requirements.txt` usa versiones **pineadas** (`==`) para FastAPI, Uvicorn, Jinja2 y python-multipart para tener despliegues reproducibles.
-- Compatibilidad esperada:
-  - Python: **3.10.x**
-  - FastAPI/Uvicorn: compatibles entre sí según las versiones fijadas en `requirements.txt`.
-- No se garantiza compatibilidad automática con versiones mayores de esas librerías hasta validar en entorno de staging.
+La app ahora arranca en **modo seguro por defecto** para escenarios **internet-exposed**:
 
-### Procedimiento de upgrade de dependencias
+- Se exige autenticación para:
+  - `/projects*`
+  - `/users*`
+  - `/projects/{project_id}/decisions*`
+  - `/partials/*` cuando la operación muta datos (`POST/PUT/PATCH/DELETE`)
+- Se habilita protección CSRF para requests HTMX basados en formularios.
+- Las cookies de sesión/CSRF usan `SameSite=Strict`.
+- `PT_SECURE_COOKIES=true` por defecto (solo envía cookies por HTTPS).
 
-Cuando necesites actualizar FastAPI, Uvicorn, Jinja2 o python-multipart:
+Variables de entorno relevantes:
 
-```bash
-# 1. Crear rama de mantenimiento
-git checkout -b chore/deps-upgrade
+```env
+# internet (default) | intranet
+PT_DEPLOYMENT_MODE=internet
 
-# 2. Actualizar pines en requirements.txt (editar manualmente)
+# credenciales de login (recomendado setear en producción)
+PT_AUTH_USER=admin
+PT_AUTH_PASSWORD=<password-largo-y-unico>
 
-# 3. Reinstalar limpio en el virtualenv del proyecto
-source .venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt
+# token opcional para clientes API (Authorization: Bearer ...)
+PT_AUTH_TOKEN=<token-opcional>
 
-# 4. Levantar app y validar
-python main.py
+# secreto de sesión
+PT_SECRET_KEY=<secret-largo-y-unico>
+
+# true recomendado para producción con TLS
+PT_SECURE_COOKIES=true
 ```
 
-Checklist mínima de compatibilidad después del upgrade:
+### Modo intranet confiable vs internet-exposed
 
-- Arranque correcto de la app sin errores de importación.
-- Render de vistas Jinja2 (`/`, `/dashboard`, `/projects`).
-- Flujos con formularios multipart (`python-multipart`) funcionando.
-- Arranque en servidor con `tracker.service` y reinicio limpio de systemd.
+- **`PT_DEPLOYMENT_MODE=internet`** (recomendado y por defecto): usar TLS, credenciales explícitas y secreto persistente.
+- **`PT_DEPLOYMENT_MODE=intranet`**: pensado para red interna confiable, pero mantiene autenticación activa para rutas críticas.
+
+> Si no defines `PT_AUTH_PASSWORD`, la app genera una password aleatoria al arrancar y la imprime en logs de arranque.
 
 ## Configurar la ruta de la base de datos
 

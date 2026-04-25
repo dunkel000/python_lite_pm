@@ -6,6 +6,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 import db
+from security import csrf_token
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -43,13 +44,17 @@ def _validate(name: str, email: str):
     return name, email, None
 
 
+def _ctx(request: Request, **kwargs):
+    return {"csrf_token": csrf_token(request), **kwargs}
+
+
 @router.get("/users", response_class=HTMLResponse)
 def users_page(request: Request):
     users = db.list_users()
     return templates.TemplateResponse(
         request,
         "users.html",
-        {"users": users, "active_page": "users"},
+        _ctx(request, users=users, active_page="users"),
     )
 
 
@@ -59,7 +64,7 @@ def partial_user_table(request: Request):
     return templates.TemplateResponse(
         request,
         "partials/user_table.html",
-        {"users": users},
+        _ctx(request, users=users),
     )
 
 
@@ -69,7 +74,7 @@ def partial_user_form(request: Request, id: int = 0):
     return templates.TemplateResponse(
         request,
         "partials/user_form.html",
-        {"user": user},
+        _ctx(request, user=user),
     )
 
 
@@ -86,7 +91,7 @@ def create_user(request: Request, name: str = Form(...), email: str = Form(...))
     return templates.TemplateResponse(
         request,
         "partials/user_table.html",
-        {"users": users},
+        _ctx(request, users=users),
     )
 
 
@@ -110,7 +115,7 @@ def update_user(
     return templates.TemplateResponse(
         request,
         "partials/user_table.html",
-        {"users": users},
+        _ctx(request, users=users),
     )
 
 
@@ -124,5 +129,5 @@ def delete_user(request: Request, user_id: int):
     return templates.TemplateResponse(
         request,
         "partials/user_table.html",
-        {"users": users},
+        _ctx(request, users=users),
     )

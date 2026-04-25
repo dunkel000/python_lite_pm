@@ -7,9 +7,12 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 import db
+from security import csrf_token
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
+ALLOWED_PRIORITIES = {"Alta", "Media", "Baja"}
+ALLOWED_STATUSES = {"Backlog", "Pendiente", "En Progreso", "Bloqueado", "Completado"}
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -63,11 +66,35 @@ def _error_fragment(message: str) -> HTMLResponse:
     )
     return HTMLResponse(html, status_code=400)
 
+
+def _project_integrity_error_message(exc: sqlite3.IntegrityError) -> str:
+    error_text = str(exc).lower()
+    if "unique constraint failed: projects.id" in error_text:
+        return "Ya existe un proyecto con ese ID."
+    if "foreign key constraint failed" in error_text:
+        return "El usuario asignado no es válido o ya no existe."
+    if "check constraint failed" in error_text:
+        return "La prioridad, el estado o el progreso del proyecto no son válidos."
+    return (
+        "No se pudo guardar el proyecto por una restricción de base de datos. "
+        "Verifica los datos e inténtalo nuevamente."
+    )
+
+
 def _parse_int(value: str):
     if value is None or value == "":
         return None
     try:
         return int(value)
+    except ValueError:
+        return None
+
+
+def _parse_iso_date(value: str):
+    if value is None or value == "":
+        return None
+    try:
+        return date.fromisoformat(value)
     except ValueError:
         return None
 
@@ -81,13 +108,14 @@ def dashboard(request: Request):
     return templates.TemplateResponse(
         request,
         "dashboard.html",
-        {
-            "projects": projects,
-            "stats": stats,
-            "users": users_list,
-            "tags": tags_list,
-            "active_page": "dashboard",
-        },
+        _ctx(
+            request,
+            projects=projects,
+            stats=stats,
+            users=users_list,
+            tags=tags_list,
+            active_page="dashboard",
+        ),
     )
 
 
@@ -110,17 +138,18 @@ def gantt_page(
     return templates.TemplateResponse(
         request,
         "gantt.html",
-        {
-            "gantt_data": gantt_data,
-            "weeks": weeks,
-            "active_page": "gantt",
-            "filter_status": status,
-            "filter_priority": priority,
-            "filter_user": assigned_user_id,
-            "filter_tag": tag_id,
-            "users": db.list_users(),
-            "tags": db.list_tags(),
-        },
+        _ctx(
+            request,
+            gantt_data=gantt_data,
+            weeks=weeks,
+            active_page="gantt",
+            filter_status=status,
+            filter_priority=priority,
+            filter_user=assigned_user_id,
+            filter_tag=tag_id,
+            users=db.list_users(),
+            tags=db.list_tags(),
+        ),
     )
 
 
@@ -143,7 +172,7 @@ def partial_project_table(
     return templates.TemplateResponse(
         request,
         "partials/project_table.html",
-        {"projects": projects},
+        _ctx(request, projects=projects),
     )
 
 
@@ -153,7 +182,7 @@ def partial_stats(request: Request):
     return templates.TemplateResponse(
         request,
         "partials/stats_cards.html",
-        {"stats": stats},
+        _ctx(request, stats=stats),
     )
 
 
@@ -167,12 +196,13 @@ def partial_project_form(request: Request, id: str = ""):
     return templates.TemplateResponse(
         request,
         "partials/project_form.html",
-        {
-            "project": project,
-            "next_id": next_id,
-            "users": db.list_users(),
-            "current_tags": current_tags,
-        },
+        _ctx(
+            request,
+            project=project,
+            next_id=next_id,
+            users=db.list_users(),
+            current_tags=current_tags,
+        ),
     )
 
 
@@ -195,7 +225,7 @@ def partial_gantt_chart(
     return templates.TemplateResponse(
         request,
         "partials/gantt_chart.html",
-        {"gantt_data": gantt_data, "weeks": weeks},
+        _ctx(request, gantt_data=gantt_data, weeks=weeks),
     )
 
 
@@ -211,7 +241,7 @@ def project_detail(request: Request, project_id: str):
     return templates.TemplateResponse(
         request,
         "partials/project_detail.html",
-        {"project": project, "decisions": decisions, "status_log": status_log},
+        _ctx(request, project=project, decisions=decisions, status_log=status_log),
     )
 
 
@@ -234,8 +264,32 @@ def create_project(
     tags: str = Form(""),
     start_date: str = Form(""),
     end_date: str = Form(""),
-    percent_complete: int = Form(0),
+    percent_complete: str = Form("0"),
 ):
+    if priority not in ALLOWED_PRIORITIES:
+        return _error_fragment(
+            "La prioridad no es válida. Valores permitidos: Alta, Media, Baja."
+        )
+    if status not in ALLOWED_STATUSES:
+        return _error_fragment(
+            "El estado no es válido. Valores permitidos: Backlog, Pendiente, En Progreso, Bloqueado, Completado."
+        )
+
+    parsed_percent_complete = _parse_int(percent_complete)
+    if parsed_percent_complete is None:
+        return _error_fragment("El porcentaje de avance debe ser un número entero.")
+    if not 0 <= parsed_percent_complete <= 100:
+        return _error_fragment("El porcentaje de avance debe estar entre 0 y 100.")
+
+    parsed_start_date = _parse_iso_date(start_date)
+    if start_date and parsed_start_date is None:
+        return _error_fragment("La fecha de inicio debe tener formato ISO (YYYY-MM-DD).")
+    parsed_end_date = _parse_iso_date(end_date)
+    if end_date and parsed_end_date is None:
+        return _error_fragment("La fecha de término debe tener formato ISO (YYYY-MM-DD).")
+    if parsed_start_date and parsed_end_date and parsed_start_date > parsed_end_date:
+        return _error_fragment("La fecha de inicio no puede ser mayor que la fecha de término.")
+
     parsed_assigned_user_id = _parse_int(assigned_user_id)
     if parsed_assigned_user_id is not None and not db.get_user(parsed_assigned_user_id):
         return _error_fragment("El usuario asignado no es válido o ya no existe.")
@@ -249,13 +303,13 @@ def create_project(
         "assigned_user_id": parsed_assigned_user_id,
         "start_date": start_date or None,
         "end_date": end_date or None,
-        "percent_complete": percent_complete,
+        "percent_complete": parsed_percent_complete,
         "tag_names": _parse_tags(tags),
     }
     try:
         db.create_project(project_data)
-    except sqlite3.IntegrityError:
-        return _error_fragment("El usuario asignado no es válido o ya no existe.")
+    except sqlite3.IntegrityError as exc:
+        return _error_fragment(_project_integrity_error_message(exc))
 
     if create_description_md:
         md_path = db.create_project_description_note(project_data)
@@ -268,7 +322,7 @@ def create_project(
     return templates.TemplateResponse(
         request,
         "partials/project_table.html",
-        {"projects": projects},
+        _ctx(request, projects=projects),
     )
 
 
@@ -284,8 +338,32 @@ def update_project(
     tags: str = Form(""),
     start_date: str = Form(""),
     end_date: str = Form(""),
-    percent_complete: int = Form(0),
+    percent_complete: str = Form("0"),
 ):
+    if priority not in ALLOWED_PRIORITIES:
+        return _error_fragment(
+            "La prioridad no es válida. Valores permitidos: Alta, Media, Baja."
+        )
+    if status not in ALLOWED_STATUSES:
+        return _error_fragment(
+            "El estado no es válido. Valores permitidos: Backlog, Pendiente, En Progreso, Bloqueado, Completado."
+        )
+
+    parsed_percent_complete = _parse_int(percent_complete)
+    if parsed_percent_complete is None:
+        return _error_fragment("El porcentaje de avance debe ser un número entero.")
+    if not 0 <= parsed_percent_complete <= 100:
+        return _error_fragment("El porcentaje de avance debe estar entre 0 y 100.")
+
+    parsed_start_date = _parse_iso_date(start_date)
+    if start_date and parsed_start_date is None:
+        return _error_fragment("La fecha de inicio debe tener formato ISO (YYYY-MM-DD).")
+    parsed_end_date = _parse_iso_date(end_date)
+    if end_date and parsed_end_date is None:
+        return _error_fragment("La fecha de término debe tener formato ISO (YYYY-MM-DD).")
+    if parsed_start_date and parsed_end_date and parsed_start_date > parsed_end_date:
+        return _error_fragment("La fecha de inicio no puede ser mayor que la fecha de término.")
+
     parsed_assigned_user_id = _parse_int(assigned_user_id)
     if parsed_assigned_user_id is not None and not db.get_user(parsed_assigned_user_id):
         return _error_fragment("El usuario asignado no es válido o ya no existe.")
@@ -301,17 +379,17 @@ def update_project(
                 "assigned_user_id": parsed_assigned_user_id,
                 "start_date": start_date or None,
                 "end_date": end_date or None,
-                "percent_complete": percent_complete,
+                "percent_complete": parsed_percent_complete,
                 "tag_names": _parse_tags(tags),
             },
         )
-    except sqlite3.IntegrityError:
-        return _error_fragment("El usuario asignado no es válido o ya no existe.")
+    except sqlite3.IntegrityError as exc:
+        return _error_fragment(_project_integrity_error_message(exc))
     projects = db.get_all_projects()
     return templates.TemplateResponse(
         request,
         "partials/project_table.html",
-        {"projects": projects},
+        _ctx(request, projects=projects),
     )
 
 
@@ -322,18 +400,22 @@ def delete_project(request: Request, project_id: str):
     return templates.TemplateResponse(
         request,
         "partials/project_table.html",
-        {"projects": projects},
+        _ctx(request, projects=projects),
     )
 
 
 @router.patch("/projects/{project_id}/status", response_class=HTMLResponse)
 def update_status(request: Request, project_id: str, status: str = Form(...)):
+    if status not in ALLOWED_STATUSES:
+        return _error_fragment(
+            "El estado no es válido. Valores permitidos: Backlog, Pendiente, En Progreso, Bloqueado, Completado."
+        )
     db.update_project_status(project_id, status)
     stats = db.get_stats()
     return templates.TemplateResponse(
         request,
         "partials/stats_cards.html",
-        {"stats": stats},
+        _ctx(request, stats=stats),
     )
 
 
@@ -387,5 +469,5 @@ def explorer_page(request: Request):
     return templates.TemplateResponse(
         request,
         "explorer.html",
-        {"active_page": "explorer"},
+        _ctx(request, active_page="explorer"),
     )

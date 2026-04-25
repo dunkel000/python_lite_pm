@@ -35,6 +35,10 @@ class UserNotFoundError(Exception):
     pass
 
 
+class DecisionNotFoundError(Exception):
+    pass
+
+
 def get_db_path() -> str:
     configured_path = os.getenv("SQLITE_DB_PATH", DEFAULT_DB_PATH)
     return os.path.abspath(os.path.expanduser(configured_path))
@@ -68,7 +72,7 @@ def init_db():
                 owner TEXT,
                 start_date TEXT,
                 end_date TEXT,
-                percent_complete INTEGER DEFAULT 0,
+                percent_complete INTEGER DEFAULT 0 CHECK(percent_complete BETWEEN 0 AND 100),
                 created_at TEXT DEFAULT (datetime('now')),
                 updated_at TEXT DEFAULT (datetime('now'))
             );
@@ -111,6 +115,7 @@ def init_db():
 
             CREATE INDEX IF NOT EXISTS idx_project_tags_tag_id ON project_tags(tag_id);
         """)
+        _ensure_projects_constraints(conn)
         _migrate_users_and_tags(conn)
     _seed_if_empty(conn)
     conn.close()
@@ -156,6 +161,74 @@ def _migrate_users_and_tags(conn):
              AND owner IS NOT NULL
              AND owner <> ''"""
     )
+
+
+def _ensure_projects_constraints(conn):
+    row = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'projects'"
+    ).fetchone()
+    if not row or not row["sql"]:
+        return
+
+    create_sql = row["sql"]
+    has_percent_check = "percent_complete BETWEEN 0 AND 100" in create_sql
+    has_priority_check = "priority IN ('Alta','Media','Baja')" in create_sql
+    has_status_check = (
+        "status IN ('Backlog','Pendiente','En Progreso','Bloqueado','Completado')"
+        in create_sql
+    )
+    if has_percent_check and has_priority_check and has_status_check:
+        return
+
+    conn.executescript("""
+        CREATE TABLE projects_new (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT,
+            priority TEXT CHECK(priority IN ('Alta','Media','Baja')),
+            status TEXT CHECK(status IN ('Backlog','Pendiente','En Progreso','Bloqueado','Completado')),
+            owner TEXT,
+            start_date TEXT,
+            end_date TEXT,
+            percent_complete INTEGER DEFAULT 0 CHECK(percent_complete BETWEEN 0 AND 100),
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now')),
+            assigned_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL
+        );
+
+        INSERT INTO projects_new (
+            id, name, description, priority, status, owner, start_date, end_date,
+            percent_complete, created_at, updated_at, assigned_user_id
+        )
+        SELECT
+            id,
+            name,
+            description,
+            CASE
+                WHEN priority IN ('Alta','Media','Baja') THEN priority
+                ELSE 'Media'
+            END,
+            CASE
+                WHEN status IN ('Backlog','Pendiente','En Progreso','Bloqueado','Completado') THEN status
+                ELSE 'Backlog'
+            END,
+            owner,
+            start_date,
+            end_date,
+            CASE
+                WHEN percent_complete < 0 THEN 0
+                WHEN percent_complete > 100 THEN 100
+                ELSE COALESCE(percent_complete, 0)
+            END,
+            created_at,
+            updated_at,
+            assigned_user_id
+        FROM projects;
+
+        DROP TABLE projects;
+        ALTER TABLE projects_new RENAME TO projects;
+        CREATE INDEX IF NOT EXISTS idx_projects_assigned_user_id ON projects(assigned_user_id);
+    """)
 
 
 def ensure_obsidian_vault() -> Path:
@@ -532,30 +605,42 @@ def create_decision(project_id: str, data: dict):
 
 def update_decision(project_id: str, decision_id: int, data: dict):
     conn = get_conn()
-    with conn:
-        conn.execute(
-            """UPDATE decisions
-               SET decision = ?, context = ?, decided_by = ?
-               WHERE id = ? AND project_id = ?""",
-            (
-                data.get("decision"),
-                data.get("context"),
-                data.get("decided_by"),
-                decision_id,
-                project_id,
-            ),
-        )
-    conn.close()
+    try:
+        with conn:
+            cur = conn.execute(
+                """UPDATE decisions
+                   SET decision = ?, context = ?, decided_by = ?
+                   WHERE id = ? AND project_id = ?""",
+                (
+                    data.get("decision"),
+                    data.get("context"),
+                    data.get("decided_by"),
+                    decision_id,
+                    project_id,
+                ),
+            )
+            if cur.rowcount == 0:
+                raise DecisionNotFoundError(
+                    f"Decision with id {decision_id} for project {project_id} not found."
+                )
+    finally:
+        conn.close()
 
 
 def delete_decision(project_id: str, decision_id: int):
     conn = get_conn()
-    with conn:
-        conn.execute(
-            "DELETE FROM decisions WHERE id = ? AND project_id = ?",
-            (decision_id, project_id),
-        )
-    conn.close()
+    try:
+        with conn:
+            cur = conn.execute(
+                "DELETE FROM decisions WHERE id = ? AND project_id = ?",
+                (decision_id, project_id),
+            )
+            if cur.rowcount == 0:
+                raise DecisionNotFoundError(
+                    f"Decision with id {decision_id} for project {project_id} not found."
+                )
+    finally:
+        conn.close()
 
 
 # ── Status Log ────────────────────────────────────────────────────────────────
