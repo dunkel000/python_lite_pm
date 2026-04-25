@@ -35,6 +35,7 @@
               hx-target="#decisions-list-{{ project_id }}"
               hx-swap="innerHTML"
               class="space-y-3">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
           <input type="text"
                  name="decision"
                  value="{{ d.decision }}"

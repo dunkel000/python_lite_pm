@@ -7,6 +7,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 import db
+from security import csrf_token
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -107,13 +108,14 @@ def dashboard(request: Request):
     return templates.TemplateResponse(
         request,
         "dashboard.html",
-        {
-            "projects": projects,
-            "stats": stats,
-            "users": users_list,
-            "tags": tags_list,
-            "active_page": "dashboard",
-        },
+        _ctx(
+            request,
+            projects=projects,
+            stats=stats,
+            users=users_list,
+            tags=tags_list,
+            active_page="dashboard",
+        ),
     )
 
 
@@ -136,17 +138,18 @@ def gantt_page(
     return templates.TemplateResponse(
         request,
         "gantt.html",
-        {
-            "gantt_data": gantt_data,
-            "weeks": weeks,
-            "active_page": "gantt",
-            "filter_status": status,
-            "filter_priority": priority,
-            "filter_user": assigned_user_id,
-            "filter_tag": tag_id,
-            "users": db.list_users(),
-            "tags": db.list_tags(),
-        },
+        _ctx(
+            request,
+            gantt_data=gantt_data,
+            weeks=weeks,
+            active_page="gantt",
+            filter_status=status,
+            filter_priority=priority,
+            filter_user=assigned_user_id,
+            filter_tag=tag_id,
+            users=db.list_users(),
+            tags=db.list_tags(),
+        ),
     )
 
 
@@ -169,7 +172,7 @@ def partial_project_table(
     return templates.TemplateResponse(
         request,
         "partials/project_table.html",
-        {"projects": projects},
+        _ctx(request, projects=projects),
     )
 
 
@@ -179,7 +182,7 @@ def partial_stats(request: Request):
     return templates.TemplateResponse(
         request,
         "partials/stats_cards.html",
-        {"stats": stats},
+        _ctx(request, stats=stats),
     )
 
 
@@ -193,12 +196,13 @@ def partial_project_form(request: Request, id: str = ""):
     return templates.TemplateResponse(
         request,
         "partials/project_form.html",
-        {
-            "project": project,
-            "next_id": next_id,
-            "users": db.list_users(),
-            "current_tags": current_tags,
-        },
+        _ctx(
+            request,
+            project=project,
+            next_id=next_id,
+            users=db.list_users(),
+            current_tags=current_tags,
+        ),
     )
 
 
@@ -221,7 +225,7 @@ def partial_gantt_chart(
     return templates.TemplateResponse(
         request,
         "partials/gantt_chart.html",
-        {"gantt_data": gantt_data, "weeks": weeks},
+        _ctx(request, gantt_data=gantt_data, weeks=weeks),
     )
 
 
@@ -237,7 +241,7 @@ def project_detail(request: Request, project_id: str):
     return templates.TemplateResponse(
         request,
         "partials/project_detail.html",
-        {"project": project, "decisions": decisions, "status_log": status_log},
+        _ctx(request, project=project, decisions=decisions, status_log=status_log),
     )
 
 
@@ -318,7 +322,7 @@ def create_project(
     return templates.TemplateResponse(
         request,
         "partials/project_table.html",
-        {"projects": projects},
+        _ctx(request, projects=projects),
     )
 
 
@@ -385,7 +389,7 @@ def update_project(
     return templates.TemplateResponse(
         request,
         "partials/project_table.html",
-        {"projects": projects},
+        _ctx(request, projects=projects),
     )
 
 
@@ -396,7 +400,7 @@ def delete_project(request: Request, project_id: str):
     return templates.TemplateResponse(
         request,
         "partials/project_table.html",
-        {"projects": projects},
+        _ctx(request, projects=projects),
     )
 
 
@@ -411,7 +415,7 @@ def update_status(request: Request, project_id: str, status: str = Form(...)):
     return templates.TemplateResponse(
         request,
         "partials/stats_cards.html",
-        {"stats": stats},
+        _ctx(request, stats=stats),
     )
 
 
@@ -465,5 +469,5 @@ def explorer_page(request: Request):
     return templates.TemplateResponse(
         request,
         "explorer.html",
-        {"active_page": "explorer"},
+        _ctx(request, active_page="explorer"),
     )

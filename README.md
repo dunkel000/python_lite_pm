@@ -29,6 +29,46 @@ python main.py
 
 El servidor levanta en http://localhost:8000
 
+## Seguridad y modo de despliegue (nuevo)
+
+La app ahora arranca en **modo seguro por defecto** para escenarios **internet-exposed**:
+
+- Se exige autenticación para:
+  - `/projects*`
+  - `/users*`
+  - `/projects/{project_id}/decisions*`
+  - `/partials/*` cuando la operación muta datos (`POST/PUT/PATCH/DELETE`)
+- Se habilita protección CSRF para requests HTMX basados en formularios.
+- Las cookies de sesión/CSRF usan `SameSite=Strict`.
+- `PT_SECURE_COOKIES=true` por defecto (solo envía cookies por HTTPS).
+
+Variables de entorno relevantes:
+
+```env
+# internet (default) | intranet
+PT_DEPLOYMENT_MODE=internet
+
+# credenciales de login (recomendado setear en producción)
+PT_AUTH_USER=admin
+PT_AUTH_PASSWORD=<password-largo-y-unico>
+
+# token opcional para clientes API (Authorization: Bearer ...)
+PT_AUTH_TOKEN=<token-opcional>
+
+# secreto de sesión
+PT_SECRET_KEY=<secret-largo-y-unico>
+
+# true recomendado para producción con TLS
+PT_SECURE_COOKIES=true
+```
+
+### Modo intranet confiable vs internet-exposed
+
+- **`PT_DEPLOYMENT_MODE=internet`** (recomendado y por defecto): usar TLS, credenciales explícitas y secreto persistente.
+- **`PT_DEPLOYMENT_MODE=intranet`**: pensado para red interna confiable, pero mantiene autenticación activa para rutas críticas.
+
+> Si no defines `PT_AUTH_PASSWORD`, la app genera una password aleatoria al arrancar y la imprime en logs de arranque.
+
 ## Configurar la ruta de la base de datos
 
 Puedes definir una ubicación personalizada para SQLite con la variable de entorno `SQLITE_DB_PATH`.
