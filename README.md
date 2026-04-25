@@ -18,9 +18,9 @@ Dashboard web para gestión de proyectos del equipo de Middle Office (Activos Pr
 git clone https://github.com/dunkel000/python_lite_pm.git
 cd python_lite_pm
 
-# 2. Crear entorno conda e instalar dependencias
-conda create -n lite_pm python=3.10
-conda activate lite_pm
+# 2. Crear entorno virtual e instalar dependencias
+python3.10 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 
 # 3. Iniciar el servidor (crea la base de datos automáticamente)
@@ -28,6 +28,40 @@ python main.py
 ```
 
 El servidor levanta en http://localhost:8000
+
+## Dependencias y política de compatibilidad
+
+- `requirements.txt` usa versiones **pineadas** (`==`) para FastAPI, Uvicorn, Jinja2 y python-multipart para tener despliegues reproducibles.
+- Compatibilidad esperada:
+  - Python: **3.10.x**
+  - FastAPI/Uvicorn: compatibles entre sí según las versiones fijadas en `requirements.txt`.
+- No se garantiza compatibilidad automática con versiones mayores de esas librerías hasta validar en entorno de staging.
+
+### Procedimiento de upgrade de dependencias
+
+Cuando necesites actualizar FastAPI, Uvicorn, Jinja2 o python-multipart:
+
+```bash
+# 1. Crear rama de mantenimiento
+git checkout -b chore/deps-upgrade
+
+# 2. Actualizar pines en requirements.txt (editar manualmente)
+
+# 3. Reinstalar limpio en el virtualenv del proyecto
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+
+# 4. Levantar app y validar
+python main.py
+```
+
+Checklist mínima de compatibilidad después del upgrade:
+
+- Arranque correcto de la app sin errores de importación.
+- Render de vistas Jinja2 (`/`, `/dashboard`, `/projects`).
+- Flujos con formularios multipart (`python-multipart`) funcionando.
+- Arranque en servidor con `tracker.service` y reinicio limpio de systemd.
 
 ## Configurar la ruta de la base de datos
 
@@ -62,13 +96,13 @@ python main.py
 
 ### Opción 3: systemd (persistente en servidor)
 
-Agrega en `tracker.service` una línea `Environment=` o `EnvironmentFile=`.
+Usa `EnvironmentFile=` en `tracker.service` para separar configuración del archivo de servicio.
 
-Ejemplo rápido con `Environment=`:
+Ejemplo con `/etc/default/tracker`:
 
 ```ini
-[Service]
-Environment=SQLITE_DB_PATH=/opt/lite_pm_data/tracker.db
+# /etc/default/tracker
+SQLITE_DB_PATH=/opt/lite_pm_data/tracker.db
 ```
 
 Después:
@@ -77,6 +111,8 @@ Después:
 sudo systemctl daemon-reload
 sudo systemctl restart tracker
 ```
+
+> El servicio de ejemplo (`tracker.service`) asume virtualenv en `/home/ubuntu/python_lite_pm/.venv` y aplica hardening base (`NoNewPrivileges`, `PrivateTmp`, `ProtectSystem`, `ProtectHome`).
 
 Si no defines `SQLITE_DB_PATH`, la aplicación usa por defecto `./data/tracker.db` (dentro del repositorio).
 
@@ -142,7 +178,7 @@ cd /ruta/a/python_lite_pm
 git -c http.sslVerify=false pull
 
 # 3. (Opcional, recomendado) Reactivar entorno e instalar dependencias por si hubo cambios
-conda activate lite_pm
+source .venv/bin/activate
 pip install -r requirements.txt
 
 # 4. Reiniciar servicio en el servidor
@@ -159,7 +195,7 @@ sudo systemctl status tracker
 Flujo rápido para mantenimiento rutinario:
 
 ```bash
-cd /ruta/a/python_lite_pm && git -c http.sslVerify=false pull && conda activate lite_pm && pip install -r requirements.txt && sudo systemctl restart tracker
+cd /ruta/a/python_lite_pm && source .venv/bin/activate && git -c http.sslVerify=false pull && pip install -r requirements.txt && sudo systemctl restart tracker
 ```
 
 ## Estructura de archivos
