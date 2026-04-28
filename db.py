@@ -41,6 +41,10 @@ class DecisionNotFoundError(Exception):
     pass
 
 
+class ProjectNotFoundError(Exception):
+    pass
+
+
 def _sql_in_list(values: tuple[str, ...]) -> str:
     escaped = [value.replace("'", "''") for value in values]
     return "(" + ",".join(f"'{value}'" for value in escaped) + ")"
@@ -505,10 +509,12 @@ def create_project(data: dict):
 
 def update_project(project_id: str, data: dict):
     current = get_project(project_id)
+    if not current:
+        raise ProjectNotFoundError(f"Project with id {project_id} not found.")
     tag_names = data.get("tag_names")
     conn = get_conn()
     with conn:
-        conn.execute(
+        cur = conn.execute(
             """UPDATE projects SET name=:name, description=:description, priority=:priority,
                status=:status, assigned_user_id=:assigned_user_id,
                start_date=:start_date, end_date=:end_date,
@@ -516,6 +522,8 @@ def update_project(project_id: str, data: dict):
                WHERE id=:id""",
             {**data, "id": project_id},
         )
+        if cur.rowcount == 0:
+            raise ProjectNotFoundError(f"Project with id {project_id} not found.")
         if current and current.get("status") != data.get("status"):
             conn.execute(
                 "INSERT INTO status_log (project_id, old_status, new_status) VALUES (?, ?, ?)",
@@ -547,7 +555,9 @@ def update_project_status(project_id: str, new_status: str):
 def delete_project(project_id: str):
     conn = get_conn()
     with conn:
-        conn.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+        cur = conn.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+        if cur.rowcount == 0:
+            raise ProjectNotFoundError(f"Project with id {project_id} not found.")
         _cleanup_orphan_tags_tx(conn)
     conn.close()
 
