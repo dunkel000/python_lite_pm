@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Form, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 import db
@@ -144,3 +144,67 @@ def delete_reference(request: Request, ref_id: int):
         "partials/reference_grid.html",
         {"refs": refs},
     )
+
+
+# ── Graph API ─────────────────────────────────────────────────────────────────
+
+@router.get("/api/references-graph-data")
+def references_graph_data():
+    refs = db.get_all_references()
+    nodes = []
+    links = []
+
+    for r in refs:
+        nodes.append({
+            "id": f"REF-{r['id']}",
+            "db_id": r["id"],
+            "name": r["title"],
+            "authors": r["authors"] or "",
+            "year": r["year"],
+            "type": r["type"],
+            "abstract": r["abstract"] or "",
+            "tags": r["tags"] or "",
+        })
+
+    # Link based on shared tags
+    tag_map = {}
+    
+    # Link based on shared authors
+    author_map = {}
+    
+    for r in refs:
+        ref_node_id = f"REF-{r['id']}"
+        # Parse tags
+        if r.get("tags"):
+            tags = [t.strip().lower() for t in r["tags"].split() if t.strip().startswith("#")]
+            for t in tags:
+                tag_map.setdefault(t, []).append(ref_node_id)
+        
+        # Parse authors loosely (by comma)
+        if r.get("authors"):
+            authors = [a.strip().lower() for a in r["authors"].split(",")]
+            for a in authors:
+                if a: # avoid empty
+                    author_map.setdefault(a, []).append(ref_node_id)
+
+    seen = set()
+    
+    # Add tag links
+    for tag, ids in tag_map.items():
+        for i in range(len(ids)):
+            for j in range(i + 1, len(ids)):
+                key = tuple(sorted([ids[i], ids[j]]))
+                if key not in seen:
+                    seen.add(key)
+                    links.append({"source": ids[i], "target": ids[j], "reason": f"Tag: {tag}"})
+                    
+    # Add author links
+    for author, ids in author_map.items():
+        for i in range(len(ids)):
+            for j in range(i + 1, len(ids)):
+                key = tuple(sorted([ids[i], ids[j]]))
+                if key not in seen:
+                    seen.add(key)
+                    links.append({"source": ids[i], "target": ids[j], "reason": f"Author: {author}"})
+
+    return JSONResponse({"nodes": nodes, "links": links})

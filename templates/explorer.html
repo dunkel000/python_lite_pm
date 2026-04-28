@@ -8,13 +8,25 @@
 
   <!-- Controls bar -->
   <div class="explorer-controls">
-    <div class="explorer-legend">
-      <span class="legend-dot" style="background:var(--node-backlog)"></span><span>Backlog</span>
-      <span class="legend-dot" style="background:var(--node-pendiente)"></span><span>Pendiente</span>
-      <span class="legend-dot" style="background:var(--node-progreso)"></span><span>En Progreso</span>
-      <span class="legend-dot" style="background:var(--node-bloqueado)"></span><span>Bloqueado</span>
-      <span class="legend-dot" style="background:var(--node-completado)"></span><span>Completado</span>
+    <div class="flex items-center gap-4">
+      <div class="flex bg-muted rounded-md p-1 h-9 items-center mt-0">
+        <button id="view-mode-projects" class="px-3 py-1 text-sm rounded cursor-pointer font-medium bg-background shadow-sm transition-colors text-foreground">Proyectos</button>
+        <button id="view-mode-references" class="px-3 py-1 text-sm rounded cursor-pointer font-medium text-muted-foreground hover:text-foreground transition-colors">Referencias</button>
+      </div>
+      <div class="explorer-legend" id="legend-projects">
+        <span class="legend-dot" style="background:var(--node-backlog)"></span><span>Backlog</span>
+        <span class="legend-dot" style="background:var(--node-pendiente)"></span><span>Pendiente</span>
+        <span class="legend-dot" style="background:var(--node-progreso)"></span><span>En Progreso</span>
+        <span class="legend-dot" style="background:var(--node-bloqueado)"></span><span>Bloqueado</span>
+        <span class="legend-dot" style="background:var(--node-completado)"></span><span>Completado</span>
+      </div>
+      <div class="explorer-legend hidden" id="legend-references">
+        <span class="legend-dot" style="background:#52525b"></span><span>Paper</span>
+        <span class="legend-dot" style="background:#3b82f6"></span><span>Book</span>
+        <span class="legend-dot" style="background:#10b981"></span><span>Chapter</span>
+      </div>
     </div>
+    
     <div class="explorer-actions">
       <button id="btn-reset-zoom" class="exp-btn" title="Centrar vista">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
@@ -39,7 +51,7 @@
   <div class="explorer-graph-area">
     <svg id="graph-svg"></svg>
 
-    <!-- Info panel (right) -->
+    <!-- Info panel (projects) -->
     <div id="node-info-panel" class="node-info-panel hidden">
       <div class="node-info-header">
         <span id="nip-id" class="node-info-id"></span>
@@ -63,6 +75,20 @@
         Ver detalle completo →
       </button>
     </div>
+
+    <!-- Info panel (references) -->
+    <div id="ref-info-panel" class="node-info-panel hidden overflow-y-auto">
+      <div class="node-info-header mb-4">
+        <span id="ref-nip-id" class="node-info-id"></span>
+        <button onclick="closeRefPanel()" class="node-info-close">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div id="ref-panel-content" class="p-0">
+        <!-- populated via htmx -->
+      </div>
+    </div>
+
   </div>
 
   <!-- Tooltip -->
@@ -83,16 +109,24 @@
     'Completado':  'var(--node-completado)',
   };
 
+  const TYPE_COLOR = {
+    'paper':   '#52525b',
+    'book':    '#3b82f6',
+    'chapter': '#10b981',
+  };
+
   let allData = { nodes: [], links: [] };
   let showLabels = true;
   let currentFilter = '';
+  let viewMode = 'projects'; // 'projects' or 'references'
   let simulation, svg, zoomBehavior, linkSel, nodeSel, labelSel;
 
   const tooltip = document.getElementById('graph-tooltip');
 
   // ─── Fetch data ─────────────────────────────────────────────────────────────
   async function loadGraph() {
-    const res = await fetch('/api/graph-data');
+    const endpoint = viewMode === 'projects' ? '/api/graph-data' : '/api/references-graph-data';
+    const res = await fetch(endpoint);
     allData = await res.json();
     buildGraph(allData);
   }
@@ -110,7 +144,7 @@
       .attr('height', H);
 
     zoomBehavior = d3.zoom()
-      .scaleExtent([0.2, 4])
+      .scaleExtent([0.1, 4])
       .on('zoom', (e) => g.attr('transform', e.transform));
     svg.call(zoomBehavior);
 
@@ -120,7 +154,7 @@
     svg.append('defs').append('marker')
       .attr('id', 'arrow')
       .attr('viewBox', '0 -5 10 10')
-      .attr('refX', 28)
+      .attr('refX', viewMode === 'references' ? 20 : 28)
       .attr('refY', 0)
       .attr('markerWidth', 6)
       .attr('markerHeight', 6)
@@ -130,9 +164,10 @@
       .attr('fill', 'var(--graph-link)');
 
     // Filter nodes
-    const filtered = currentFilter
-      ? data.nodes.filter(n => n.status === currentFilter)
-      : data.nodes;
+    let filtered = data.nodes;
+    if (viewMode === 'projects' && currentFilter) {
+      filtered = data.nodes.filter(n => n.status === currentFilter);
+    }
     const filteredIds = new Set(filtered.map(n => n.id));
     const filteredLinks = data.links.filter(
       l => filteredIds.has(l.source.id || l.source) && filteredIds.has(l.target.id || l.target)
@@ -142,8 +177,10 @@
     const nodes = filtered.map(d => ({...d}));
     const links = filteredLinks.map(d => ({...d}));
 
+    const distance = viewMode === 'references' ? 150 : 120;
+    
     simulation = d3.forceSimulation(nodes)
-      .force('link', d3.forceLink(links).id(d => d.id).distance(120))
+      .force('link', d3.forceLink(links).id(d => d.id).distance(distance))
       .force('charge', d3.forceManyBody().strength(-350))
       .force('center', d3.forceCenter(W / 2, H / 2))
       .force('collision', d3.forceCollide().radius(d => nodeRadius(d) + 10));
@@ -175,39 +212,41 @@
     nodeSel.append('circle')
       .attr('class', 'node-glow')
       .attr('r', d => nodeRadius(d) + 6)
-      .attr('fill', d => STATUS_COLOR[d.status] || '#888')
+      .attr('fill', d => nodeColor(d))
       .attr('opacity', 0.15);
 
     // Main circle
     nodeSel.append('circle')
       .attr('class', 'node-circle')
       .attr('r', d => nodeRadius(d))
-      .attr('fill', d => STATUS_COLOR[d.status] || '#888')
+      .attr('fill', d => nodeColor(d))
       .attr('stroke', 'var(--graph-node-stroke)')
       .attr('stroke-width', 2);
 
-    // Progress ring
-    nodeSel.each(function(d) {
-      const r = nodeRadius(d);
-      const circ = 2 * Math.PI * r;
-      const dash = (d.percent / 100) * circ;
-      d3.select(this).append('circle')
-        .attr('r', r)
-        .attr('fill', 'none')
-        .attr('stroke', 'rgba(255,255,255,0.6)')
-        .attr('stroke-width', 2.5)
-        .attr('stroke-dasharray', `${dash} ${circ}`)
-        .attr('stroke-linecap', 'round')
-        .attr('transform', 'rotate(-90)');
-    });
+    // Progress ring (only for projects)
+    if (viewMode === 'projects') {
+      nodeSel.each(function(d) {
+        const r = nodeRadius(d);
+        const circ = 2 * Math.PI * r;
+        const dash = (d.percent / 100) * circ;
+        d3.select(this).append('circle')
+          .attr('r', r)
+          .attr('fill', 'none')
+          .attr('stroke', 'rgba(255,255,255,0.6)')
+          .attr('stroke-width', 2.5)
+          .attr('stroke-dasharray', `${dash} ${circ}`)
+          .attr('stroke-linecap', 'round')
+          .attr('transform', 'rotate(-90)');
+      });
+    }
 
-    // ID label inside node
+    // ID label inside node (or icon for references)
     nodeSel.append('text')
       .attr('class', 'node-id-text')
       .attr('text-anchor', 'middle')
       .attr('dy', '0.35em')
-      .text(d => d.id)
-      .attr('font-size', '9px')
+      .text(d => viewMode === 'references' ? 'R' : d.id.replace('DEV-', ''))
+      .attr('font-size', viewMode === 'references' ? '12px' : '9px')
       .attr('font-weight', '700')
       .attr('fill', 'rgba(255,255,255,0.9)')
       .attr('pointer-events', 'none');
@@ -220,7 +259,10 @@
       .attr('class', 'node-label')
       .attr('text-anchor', 'middle')
       .attr('dy', d => nodeRadius(d) + 16)
-      .text(d => d.name.length > 22 ? d.name.slice(0, 20) + '…' : d.name)
+      .text(d => {
+        let text = d.name || '';
+        return text.length > 25 ? text.slice(0, 23) + '…' : text;
+      })
       .attr('fill', 'var(--graph-label)')
       .attr('font-size', '11px')
       .attr('pointer-events', 'none')
@@ -238,7 +280,13 @@
   }
 
   function nodeRadius(d) {
+    if (viewMode === 'references') return 14;
     return 16 + Math.round((d.percent / 100) * 10);
+  }
+  
+  function nodeColor(d) {
+    if (viewMode === 'references') return TYPE_COLOR[d.type] || '#888';
+    return STATUS_COLOR[d.status] || '#888';
   }
 
   // ─── Drag ───────────────────────────────────────────────────────────────────
@@ -254,7 +302,11 @@
 
   // ─── Tooltip ────────────────────────────────────────────────────────────────
   function showTooltip(event, d) {
-    tooltip.innerHTML = `<strong>${d.id}</strong> ${d.name}<br><span style="opacity:.7">${d.status} · ${d.percent}%</span>`;
+    if (viewMode === 'references') {
+      tooltip.innerHTML = `<strong>${d.name}</strong><br><span style="opacity:.7">${d.type} · ${d.year || ''}</span>`;
+    } else {
+      tooltip.innerHTML = `<strong>${d.id}</strong> ${d.name}<br><span style="opacity:.7">${d.status} · ${d.percent}%</span>`;
+    }
     tooltip.style.display = 'block';
     moveTooltip(event);
   }
@@ -266,23 +318,78 @@
 
   // ─── Node panel ─────────────────────────────────────────────────────────────
   function openNodePanel(d) {
-    document.getElementById('nip-id').textContent = d.id;
-    document.getElementById('nip-name').textContent = d.name;
-    document.getElementById('nip-status').textContent = d.status;
-    document.getElementById('nip-priority').textContent = d.priority;
-    document.getElementById('nip-owner').textContent = d.owner || '—';
-    document.getElementById('nip-percent').textContent = d.percent + '%';
-    document.getElementById('nip-bar').style.width = d.percent + '%';
-    const btn = document.getElementById('nip-detail-btn');
-    btn.setAttribute('hx-get', `/projects/${d.id}`);
-    htmx.process(btn);
-    document.getElementById('node-info-panel').classList.remove('hidden');
+    if (viewMode === 'references') {
+       closeNodePanel();
+       document.getElementById('ref-nip-id').textContent = d.id;
+       const contentDiv = document.getElementById('ref-panel-content');
+       contentDiv.innerHTML = '<div class="p-6 text-center text-muted-foreground">Cargando...</div>';
+       document.getElementById('ref-info-panel').classList.remove('hidden');
+       
+       htmx.ajax('GET', `/partials/reference-detail/${d.db_id}`, {target: '#ref-panel-content', swap: 'innerHTML'});
+    } else {
+       closeRefPanel();
+       document.getElementById('nip-id').textContent = d.id;
+       document.getElementById('nip-name').textContent = d.name;
+       document.getElementById('nip-status').textContent = d.status;
+       document.getElementById('nip-priority').textContent = d.priority;
+       document.getElementById('nip-owner').textContent = d.owner || '—';
+       document.getElementById('nip-percent').textContent = d.percent + '%';
+       document.getElementById('nip-bar').style.width = d.percent + '%';
+       const btn = document.getElementById('nip-detail-btn');
+       btn.setAttribute('hx-get', `/projects/${d.id}`);
+       htmx.process(btn);
+       document.getElementById('node-info-panel').classList.remove('hidden');
+    }
   }
   window.closeNodePanel = function() {
     document.getElementById('node-info-panel').classList.add('hidden');
   };
+  window.closeRefPanel = function() {
+    document.getElementById('ref-info-panel').classList.add('hidden');
+  };
 
   // ─── Controls ───────────────────────────────────────────────────────────────
+  
+  function updateViewMode(mode) {
+    viewMode = mode;
+    const btnProj = document.getElementById('view-mode-projects');
+    const btnRef = document.getElementById('view-mode-references');
+    
+    if (mode === 'projects') {
+      btnProj.classList.replace('text-muted-foreground', 'text-foreground');
+      btnProj.classList.add('bg-background', 'shadow-sm');
+      btnProj.classList.remove('hover:text-foreground');
+      
+      btnRef.classList.replace('text-foreground', 'text-muted-foreground');
+      btnRef.classList.remove('bg-background', 'shadow-sm');
+      btnRef.classList.add('hover:text-foreground');
+      
+      document.getElementById('legend-projects').classList.remove('hidden');
+      document.getElementById('legend-references').classList.add('hidden');
+      document.getElementById('filter-status-graph').classList.remove('hidden');
+      
+      closeRefPanel();
+    } else {
+      btnRef.classList.replace('text-muted-foreground', 'text-foreground');
+      btnRef.classList.add('bg-background', 'shadow-sm');
+      btnRef.classList.remove('hover:text-foreground');
+      
+      btnProj.classList.replace('text-foreground', 'text-muted-foreground');
+      btnProj.classList.remove('bg-background', 'shadow-sm');
+      btnProj.classList.add('hover:text-foreground');
+      
+      document.getElementById('legend-references').classList.remove('hidden');
+      document.getElementById('legend-projects').classList.add('hidden');
+      document.getElementById('filter-status-graph').classList.add('hidden');
+      
+      closeNodePanel();
+    }
+    loadGraph();
+  }
+  
+  document.getElementById('view-mode-projects').addEventListener('click', () => updateViewMode('projects'));
+  document.getElementById('view-mode-references').addEventListener('click', () => updateViewMode('references'));
+
   document.getElementById('btn-reset-zoom').addEventListener('click', () => {
     svg.transition().duration(600).call(zoomBehavior.transform, d3.zoomIdentity);
   });
