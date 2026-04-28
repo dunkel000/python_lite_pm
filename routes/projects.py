@@ -266,6 +266,13 @@ def create_project(
     end_date: str = Form(""),
     percent_complete: str = Form("0"),
 ):
+    project_id = id.strip()
+    project_name = name.strip()
+    if not project_id:
+        return _error_fragment("El ID del proyecto es obligatorio.")
+    if not project_name:
+        return _error_fragment("El nombre del proyecto es obligatorio.")
+
     if priority not in ALLOWED_PRIORITIES:
         return _error_fragment(
             "La prioridad no es válida. Valores permitidos: Alta, Media, Baja."
@@ -295,8 +302,8 @@ def create_project(
         return _error_fragment("El usuario asignado no es válido o ya no existe.")
 
     project_data = {
-        "id": id.strip(),
-        "name": name.strip(),
+        "id": project_id,
+        "name": project_name,
         "description": description.strip(),
         "priority": priority,
         "status": status,
@@ -340,6 +347,10 @@ def update_project(
     end_date: str = Form(""),
     percent_complete: str = Form("0"),
 ):
+    project_name = name.strip()
+    if not project_name:
+        return _error_fragment("El nombre del proyecto es obligatorio.")
+
     if priority not in ALLOWED_PRIORITIES:
         return _error_fragment(
             "La prioridad no es válida. Valores permitidos: Alta, Media, Baja."
@@ -372,7 +383,7 @@ def update_project(
         db.update_project(
             project_id,
             {
-                "name": name.strip(),
+                "name": project_name,
                 "description": description.strip(),
                 "priority": priority,
                 "status": status,
@@ -385,6 +396,8 @@ def update_project(
         )
     except sqlite3.IntegrityError as exc:
         return _error_fragment(_project_integrity_error_message(exc))
+    except db.ProjectNotFoundError:
+        return HTMLResponse("<p class='p-6 text-red-500'>Proyecto no encontrado.</p>", status_code=404)
     projects = db.get_all_projects()
     return templates.TemplateResponse(
         request,
@@ -395,7 +408,10 @@ def update_project(
 
 @router.delete("/projects/{project_id}", response_class=HTMLResponse)
 def delete_project(request: Request, project_id: str):
-    db.delete_project(project_id)
+    try:
+        db.delete_project(project_id)
+    except db.ProjectNotFoundError:
+        return HTMLResponse("<p class='p-6 text-red-500'>Proyecto no encontrado.</p>", status_code=404)
     projects = db.get_all_projects()
     return templates.TemplateResponse(
         request,
