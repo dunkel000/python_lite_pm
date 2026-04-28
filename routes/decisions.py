@@ -11,6 +11,10 @@ router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
 
+def _ctx(request: Request, **kwargs):
+    return {"csrf_token": csrf_token(request), **kwargs}
+
+
 def _error_fragment(message: str) -> HTMLResponse:
     html = (
         '<div class="p-4 text-sm text-destructive bg-destructive/10 '

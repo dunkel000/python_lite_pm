@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}Dashboard{% endblock %}
-{% block header_title %}Dashboard de Proyectos{% endblock %}
+{% block header_title %}Dashboard de proyectos{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
@@ -12,9 +12,12 @@
   </div>
 
   <!-- Toolbar -->
-  <div class="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
-    <div class="px-5 py-4 flex flex-wrap items-center gap-3 border-b border-border bg-muted/50">
-      <h2 class="text-sm font-semibold text-foreground flex-1">Proyectos</h2>
+  <div class="bg-card border border-border overflow-hidden">
+    <div class="px-5 py-4 flex flex-wrap items-center gap-3 border-b border-border">
+      <div class="flex-1">
+        <p class="am-label">Selected work</p>
+        <h2 class="am-section-title mt-1">Proyectos</h2>
+      </div>
 
       <!-- Filters -->
       <div class="flex items-center gap-2 flex-wrap">
@@ -73,11 +76,9 @@
       <button hx-get="/partials/project-form"
               hx-target="#modal-content"
               hx-swap="innerHTML"
-              class="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium px-4 py-1.5 rounded-md transition-colors shadow-sm">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-        </svg>
-        Nuevo Proyecto
+              class="am-btn">
+        <span aria-hidden="true">+</span>
+        Nuevo proyecto
       </button>
     </div>
 

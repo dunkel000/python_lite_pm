@@ -15,6 +15,10 @@ ALLOWED_PRIORITIES = set(db.PROJECT_PRIORITIES)
 ALLOWED_STATUSES = set(db.PROJECT_STATUSES)
 
 
+def _ctx(request: Request, **kwargs):
+    return {"csrf_token": csrf_token(request), **kwargs}
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _current_monday() -> date:

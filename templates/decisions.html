@@ -1,16 +1,19 @@
 {% extends "base.html" %}
 
 {% block title %}Decisiones{% endblock %}
-{% block header_title %}Registro de Decisiones{% endblock %}
+{% block header_title %}Registro de decisiones{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
 
   <!-- Filter + header -->
-  <div class="bg-card rounded-lg border border-border shadow-sm px-5 py-4 flex flex-wrap items-center gap-3">
-    <span class="text-sm font-semibold text-foreground flex-1">
-      {{ decisions | length }} decisión{% if decisions|length != 1 %}es{% endif %} registrada{% if decisions|length != 1 %}s{% endif %}
-    </span>
+  <div class="bg-card border border-border px-5 py-4 flex flex-wrap items-center gap-3">
+    <div class="flex-1">
+      <p class="am-label">Audit log</p>
+      <h2 class="am-section-title mt-1">
+        {{ decisions | length }} decisión{% if decisions|length != 1 %}es{% endif %} registrada{% if decisions|length != 1 %}s{% endif %}
+      </h2>
+    </div>
     <select id="filter-project" name="project_id"
             hx-get="/partials/decisions-list"
             hx-target="#decisions-list"
