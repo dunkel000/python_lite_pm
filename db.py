@@ -227,10 +227,22 @@ def _migration_v3(conn):
     """)
 
 
+def _migration_v4(conn):
+    users_cols = {row["name"] for row in conn.execute("PRAGMA table_info('users')").fetchall()}
+    if "created_at" not in users_cols:
+        conn.execute("ALTER TABLE users ADD COLUMN created_at TEXT")
+        conn.execute(
+            "UPDATE users SET created_at = datetime('now') "
+            "WHERE created_at IS NULL OR created_at = ''"
+        )
+    conn.commit()
+
+
 _MIGRATIONS = [
     (1, _migration_v1),
     (2, _migration_v2),
     (3, _migration_v3),
+    (4, _migration_v4),
 ]
 
 
