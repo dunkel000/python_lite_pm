@@ -67,80 +67,64 @@ def get_conn():
     return conn
 
 
-def init_db():
-    db_dir = get_db_dir()
-    if db_dir:
-        os.makedirs(db_dir, exist_ok=True)
-    conn = get_conn()
-    with conn:
-        conn.executescript(f"""
-            CREATE TABLE IF NOT EXISTS projects (
-                id TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                description TEXT,
-                priority TEXT CHECK(priority IN {_sql_in_list(PROJECT_PRIORITIES)}),
-                status TEXT CHECK(status IN {_sql_in_list(PROJECT_STATUSES)}),
-                owner TEXT,
-                start_date TEXT,
-                end_date TEXT,
-                percent_complete INTEGER DEFAULT 0 CHECK(percent_complete BETWEEN 0 AND 100),
-                created_at TEXT DEFAULT (datetime('now')),
-                updated_at TEXT DEFAULT (datetime('now'))
-            );
+def _migration_v1(conn):
+    conn.executescript(f"""
+        CREATE TABLE IF NOT EXISTS projects (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT,
+            priority TEXT CHECK(priority IN {_sql_in_list(PROJECT_PRIORITIES)}),
+            status TEXT CHECK(status IN {_sql_in_list(PROJECT_STATUSES)}),
+            owner TEXT,
+            start_date TEXT,
+            end_date TEXT,
+            percent_complete INTEGER DEFAULT 0 CHECK(percent_complete BETWEEN 0 AND 100),
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now'))
+        );
 
-            CREATE TABLE IF NOT EXISTS decisions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
-                decision TEXT NOT NULL,
-                context TEXT,
-                decided_by TEXT,
-                created_at TEXT DEFAULT (datetime('now'))
-            );
+        CREATE TABLE IF NOT EXISTS decisions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
+            decision TEXT NOT NULL,
+            context TEXT,
+            decided_by TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
+        );
 
-            CREATE TABLE IF NOT EXISTS status_log (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
-                old_status TEXT,
-                new_status TEXT,
-                changed_at TEXT DEFAULT (datetime('now'))
-            );
+        CREATE TABLE IF NOT EXISTS status_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
+            old_status TEXT,
+            new_status TEXT,
+            changed_at TEXT DEFAULT (datetime('now'))
+        );
 
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                email TEXT NOT NULL UNIQUE,
-                created_at TEXT DEFAULT (datetime('now'))
-            );
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE,
+            created_at TEXT DEFAULT (datetime('now'))
+        );
 
-            CREATE TABLE IF NOT EXISTS tags (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL UNIQUE,
-                color TEXT
-            );
+        CREATE TABLE IF NOT EXISTS tags (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            color TEXT
+        );
 
-            CREATE TABLE IF NOT EXISTS project_tags (
-                project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-                tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
-                PRIMARY KEY (project_id, tag_id)
-            );
+        CREATE TABLE IF NOT EXISTS project_tags (
+            project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+            tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+            PRIMARY KEY (project_id, tag_id)
+        );
 
-            CREATE INDEX IF NOT EXISTS idx_project_tags_tag_id ON project_tags(tag_id);
-        """)
-        _ensure_projects_constraints(conn)
-        _migrate_users_and_tags(conn)
-    _seed_if_empty(conn)
-    conn.close()
+        CREATE INDEX IF NOT EXISTS idx_project_tags_tag_id ON project_tags(tag_id);
+    """)
 
 
-def _slugify_email_local(name: str) -> str:
-    normalized = unicodedata.normalize("NFKD", name)
-    ascii_only = normalized.encode("ascii", "ignore").decode("ascii")
-    slug = re.sub(r"[^a-zA-Z0-9]+", ".", ascii_only).strip(".").lower()
-    return slug or "user"
-
-
-def _migrate_users_and_tags(conn):
-    cols = [row["name"] for row in conn.execute("PRAGMA table_info('projects')").fetchall()]
+def _migration_v2(conn):
+    cols = {row["name"] for row in conn.execute("PRAGMA table_info('projects')").fetchall()}
     if "assigned_user_id" not in cols:
         conn.execute(
             "ALTER TABLE projects ADD COLUMN assigned_user_id INTEGER "
@@ -149,7 +133,6 @@ def _migrate_users_and_tags(conn):
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_projects_assigned_user_id ON projects(assigned_user_id)"
     )
-
     owners = conn.execute(
         "SELECT DISTINCT owner FROM projects WHERE owner IS NOT NULL AND owner <> ''"
     ).fetchall()
@@ -162,7 +145,6 @@ def _migrate_users_and_tags(conn):
             "INSERT OR IGNORE INTO users (name, email) VALUES (?, ?)",
             (name, email),
         )
-
     conn.execute(
         """UPDATE projects
            SET assigned_user_id = (
@@ -172,9 +154,10 @@ def _migrate_users_and_tags(conn):
              AND owner IS NOT NULL
              AND owner <> ''"""
     )
+    conn.commit()
 
 
-def _ensure_projects_constraints(conn):
+def _migration_v3(conn):
     row = conn.execute(
         "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'projects'"
     ).fetchone()
@@ -182,13 +165,18 @@ def _ensure_projects_constraints(conn):
         return
 
     create_sql = row["sql"]
-    has_percent_check = "percent_complete BETWEEN 0 AND 100" in create_sql
-    has_priority_check = f"priority IN {_sql_in_list(PROJECT_PRIORITIES)}" in create_sql
-    has_status_check = f"status IN {_sql_in_list(PROJECT_STATUSES)}" in create_sql
-    if has_percent_check and has_priority_check and has_status_check:
+    if (
+        "percent_complete BETWEEN 0 AND 100" in create_sql
+        and f"priority IN {_sql_in_list(PROJECT_PRIORITIES)}" in create_sql
+        and f"status IN {_sql_in_list(PROJECT_STATUSES)}" in create_sql
+    ):
         return
 
+    cols = {row["name"] for row in conn.execute("PRAGMA table_info('projects')").fetchall()}
+    assigned_user_id_select = "assigned_user_id" if "assigned_user_id" in cols else "NULL"
+
     conn.executescript(f"""
+        DROP TABLE IF EXISTS projects_new;
         CREATE TABLE projects_new (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
@@ -230,13 +218,47 @@ def _ensure_projects_constraints(conn):
             END,
             created_at,
             updated_at,
-            assigned_user_id
+            {assigned_user_id_select}
         FROM projects;
 
         DROP TABLE projects;
         ALTER TABLE projects_new RENAME TO projects;
         CREATE INDEX IF NOT EXISTS idx_projects_assigned_user_id ON projects(assigned_user_id);
     """)
+
+
+_MIGRATIONS = [
+    (1, _migration_v1),
+    (2, _migration_v2),
+    (3, _migration_v3),
+]
+
+
+def _run_migrations(conn):
+    current = conn.execute("PRAGMA user_version").fetchone()[0]
+    for version, fn in _MIGRATIONS:
+        if current < version:
+            fn(conn)
+            conn.execute(f"PRAGMA user_version = {version}")
+            conn.commit()
+            current = version
+
+
+def init_db():
+    db_dir = get_db_dir()
+    if db_dir:
+        os.makedirs(db_dir, exist_ok=True)
+    conn = get_conn()
+    _run_migrations(conn)
+    _seed_if_empty(conn)
+    conn.close()
+
+
+def _slugify_email_local(name: str) -> str:
+    normalized = unicodedata.normalize("NFKD", name)
+    ascii_only = normalized.encode("ascii", "ignore").decode("ascii")
+    slug = re.sub(r"[^a-zA-Z0-9]+", ".", ascii_only).strip(".").lower()
+    return slug or "user"
 
 
 def ensure_obsidian_vault() -> Path:

@@ -39,7 +39,7 @@
 
       <!-- Gantt bar -->
       {% if p.col_start and p.col_span > 0 %}
-      <div class="gantt-bar gantt-bar-{{ p.status | replace(' ', '-') | lower }} shadow-sm border border-black/5 dark:border-white/5 active:scale-[0.98] transition-transform"
+      <div class="gantt-bar gantt-bar-{{ p.status | replace(' ', '-') | lower }} active:scale-[0.98] transition-transform"
            style="grid-column: {{ p.col_start }} / span {{ p.col_span }}; grid-row: {{ row }}; align-self: center; margin: 0 4px; height: 24px;"
            title="{{ p.name }} | {{ p.status }} | {{ p.percent_complete }}%">
         <div class="gantt-bar-progress" style="width: {{ p.percent_complete }}%"></div>

@@ -168,11 +168,11 @@
 
   <!-- Modal overlay -->
   <div id="modal-overlay"
-       class="fixed inset-0 bg-background/85 backdrop-blur-sm z-40 hidden items-center justify-center transition-all duration-200"
+       class="fixed inset-0 bg-background/85 z-40 hidden items-center justify-center transition-all duration-200"
        x-data
        @keydown.escape.window="closeModal()"
        onclick="if(event.target===this){closeModal();}">
-    <div id="modal-content" class="bg-card text-card-foreground border border-border shadow-lg w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto relative animate-in fade-in zoom-in duration-200">
+    <div id="modal-content" class="bg-card text-card-foreground border border-border w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto relative">
     </div>
   </div>
 
