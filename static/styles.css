@@ -238,14 +238,46 @@ body::before {
   inset: 0;
   pointer-events: none;
   z-index: 9999;
-  opacity: 0.08;
+  opacity: 0.13;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 240px 240px;
   mix-blend-mode: multiply;
 }
 .dark body::before {
-  opacity: 0.12;
+  opacity: 0.18;
   mix-blend-mode: screen;
+}
+
+/* ────────────────────────────────────────────
+   AM stat — large display-type number with grouped label
+   Used on dashboard KPI cards so the brand display
+   typography reads at a glance.
+   ──────────────────────────────────────────── */
+.am-stat-value {
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: hsl(var(--foreground));
+}
+.am-stat-label {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 10px;
+}
+
+/* AM section heading — display type for in-page section labels */
+.am-section-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: hsl(var(--foreground));
 }
 
 /* ────────────────────────────────────────────

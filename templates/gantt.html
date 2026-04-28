@@ -7,8 +7,11 @@
 <div class="space-y-6">
 
   <!-- Filters -->
-  <div class="bg-card rounded-lg border border-border shadow-sm px-5 py-4 flex flex-wrap items-center gap-3">
-    <span class="text-sm font-semibold text-foreground flex-1">Línea de tiempo <span class="text-muted-foreground font-normal ml-2">— 16 semanas</span></span>
+  <div class="bg-card border border-border px-5 py-4 flex flex-wrap items-center gap-3">
+    <div class="flex-1">
+      <p class="am-label">Timeline</p>
+      <h2 class="am-section-title mt-1">Línea de tiempo <span class="text-muted-foreground font-normal ml-2 text-sm">— 16 semanas</span></h2>
+    </div>
 
     <div class="flex items-center gap-2 flex-wrap">
       <select id="gantt-status" name="status"
@@ -66,7 +69,7 @@
   </div>
 
   <!-- Gantt chart -->
-  <div id="gantt-container" class="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
+  <div id="gantt-container" class="bg-card border border-border overflow-hidden">
     {% include "partials/gantt_chart.html" %}
   </div>
 
