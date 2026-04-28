@@ -471,24 +471,25 @@ body::before {
   -moz-appearance: none;
   display: inline-flex;
   align-items: center;
-  padding: 3px 22px 3px 12px;
-  border-radius: 999px;
-  border: 1px solid transparent;
+  min-width: 128px;
+  padding: 4px 28px 4px 12px;
+  border-radius: 10px;
+  border: 1px solid hsl(var(--border) / 0.7);
   font-family: var(--font-body);
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0.01em;
   cursor: pointer;
   background-color: hsl(var(--secondary));
   color: hsl(var(--secondary-foreground));
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 20 20' fill='currentColor'><path d='M5 8l5 5 5-5z'/></svg>");
   background-repeat: no-repeat;
-  background-position: right 6px center;
+  background-position: right 9px center;
   background-size: 10px 10px;
-  transition: filter 0.12s, box-shadow 0.12s;
+  transition: filter 0.12s, box-shadow 0.12s, border-color 0.12s;
 }
-.status-select:hover  { filter: brightness(0.97); }
+.status-select:hover  { filter: brightness(0.98); border-color: hsl(var(--ring) / 0.45); }
 .status-select:focus  { outline: none; box-shadow: 0 0 0 2px hsl(var(--ring) / 0.5); }
 .dark .status-select:hover { filter: brightness(1.12); }
 
