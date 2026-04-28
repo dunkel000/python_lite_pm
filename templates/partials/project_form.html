@@ -158,11 +158,11 @@
 
     <div class="flex flex-col-reverse md:flex-row gap-3 pt-4 border-t border-border">
       <button type="button" onclick="closeModal()"
-              class="flex-1 px-4 py-2 text-sm font-medium text-foreground bg-secondary hover:bg-secondary/80 rounded-md transition-colors border border-border">
+              class="am-btn am-btn--ghost flex-1 justify-center">
         Cancelar
       </button>
       <button type="submit"
-              class="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium py-2 rounded-md transition-shadow shadow-sm">
+              class="am-btn flex-1 justify-center">
         {% if is_edit %}Guardar cambios{% else %}Crear proyecto{% endif %}
       </button>
     </div>

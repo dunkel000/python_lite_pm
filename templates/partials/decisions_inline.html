@@ -1,7 +1,7 @@
 {% if decisions %}
   <div class="space-y-3 mb-4">
     {% for d in decisions %}
-    <div x-data="{editing:false}" class="bg-card border border-border rounded-lg p-4 shadow-sm">
+    <div x-data="{editing:false}" class="bg-card border border-border p-4">
       <template x-if="!editing">
         <div>
           <p class="text-sm font-semibold text-foreground">{{ d.decision }}</p>
@@ -53,11 +53,11 @@
             <div class="flex gap-2">
               <button type="button"
                       @click="editing=false"
-                      class="px-3 py-2 text-xs font-medium text-foreground bg-secondary hover:bg-secondary/80 border border-border rounded-md transition-colors">
+                      class="am-btn am-btn--ghost">
                 Cancelar
               </button>
               <button type="submit"
-                      class="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold rounded-md transition-all shadow-sm">
+                      class="am-btn">
                 Guardar
               </button>
             </div>
@@ -68,7 +68,7 @@
     {% endfor %}
   </div>
 {% else %}
-  <div class="py-10 text-center border border-dashed border-border rounded-lg mb-4">
+  <div class="py-10 text-center border border-dashed border-border mb-4">
     <p class="text-sm text-muted-foreground mb-3">Sin decisiones registradas.</p>
   </div>
 {% endif %}

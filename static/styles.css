@@ -84,9 +84,9 @@
   --status-backlog-bg:        hsl(0 0% 92%);
   --status-backlog-fg:        hsl(0 0% 22%);
 
-  --status-pendiente:         hsl(221 35% 42%);
-  --status-pendiente-bg:      hsl(220 18% 93%);
-  --status-pendiente-fg:      hsl(221 30% 24%);
+  --status-pendiente:         hsl(0 0% 36%);
+  --status-pendiente-bg:      hsl(0 0% 90%);
+  --status-pendiente-fg:      hsl(0 0% 16%);
 
   --status-en-progreso:       hsl(35 65% 42%);
   --status-en-progreso-bg:    hsl(38 30% 92%);
@@ -144,9 +144,9 @@
   --status-backlog-bg:        hsl(0 0% 18%);
   --status-backlog-fg:        hsl(0 0% 78%);
 
-  --status-pendiente:         hsl(221 45% 60%);
-  --status-pendiente-bg:      hsl(221 25% 20%);
-  --status-pendiente-fg:      hsl(221 60% 80%);
+  --status-pendiente:         hsl(0 0% 55%);
+  --status-pendiente-bg:      hsl(0 0% 20%);
+  --status-pendiente-fg:      hsl(0 0% 75%);
 
   --status-en-progreso:       hsl(38 70% 55%);
   --status-en-progreso-bg:    hsl(35 30% 18%);
@@ -627,7 +627,6 @@ tr { transition: background-color 0.1s ease; }
   font-family: var(--font-mono);
   font-size: 11px;
   line-height: 1.5;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
   z-index: 1000;
   max-width: 240px;
 }
@@ -641,7 +640,6 @@ tr { transition: background-color 0.1s ease; }
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
   border-radius: var(--radius);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
   padding: 18px;
   z-index: 20;
   animation: slide-in-right 0.2s ease;
