@@ -113,51 +113,51 @@
 
 .dark {
   /* Surfaces — dark = pure ink with grain */
-  --background: 0 0% 7%;             /* ink-800 */
+  --background: 0 0% 4%;             /* ink-900 */
   --foreground: 60 14% 98%;          /* paper-50 */
-  --card: 0 0% 10%;                  /* ink-700 */
+  --card: 0 0% 7%;                   /* ink-800 */
   --card-foreground: 60 14% 98%;
-  --popover: 0 0% 10%;
+  --popover: 0 0% 7%;
   --popover-foreground: 60 14% 98%;
 
   --primary: 60 14% 98%;
   --primary-foreground: 0 0% 4%;
 
-  --secondary: 0 0% 16%;             /* ink-600 */
+  --secondary: 0 0% 12%;             /* ink-700 */
   --secondary-foreground: 60 14% 98%;
 
-  --muted: 0 0% 16%;
-  --muted-foreground: 0 0% 67%;      /* ink-200 */
+  --muted: 0 0% 12%;
+  --muted-foreground: 0 0% 62%;      /* ink-200 */
 
-  --accent: 0 0% 16%;
+  --accent: 0 0% 12%;
   --accent-foreground: 60 14% 98%;
 
   --destructive: 0 55% 45%;
   --destructive-foreground: 60 14% 98%;
 
-  --border: 0 0% 18%;                /* ≈ rgba(255,255,255,0.08) */
-  --input: 0 0% 22%;
+  --border: 0 0% 14%;                /* ≈ rgba(255,255,255,0.06) */
+  --input: 0 0% 18%;
   --ring: 0 0% 80%;
 
   /* Status — dark, dimmer surfaces */
-  --status-backlog:           hsl(0 0% 60%);
-  --status-backlog-bg:        hsl(0 0% 18%);
-  --status-backlog-fg:        hsl(0 0% 78%);
+  --status-backlog:           hsl(0 0% 58%);
+  --status-backlog-bg:        hsl(0 0% 13%);
+  --status-backlog-fg:        hsl(0 0% 76%);
 
-  --status-pendiente:         hsl(0 0% 55%);
-  --status-pendiente-bg:      hsl(0 0% 20%);
-  --status-pendiente-fg:      hsl(0 0% 75%);
+  --status-pendiente:         hsl(0 0% 53%);
+  --status-pendiente-bg:      hsl(0 0% 14%);
+  --status-pendiente-fg:      hsl(0 0% 73%);
 
   --status-en-progreso:       hsl(38 70% 55%);
-  --status-en-progreso-bg:    hsl(35 30% 18%);
+  --status-en-progreso-bg:    hsl(35 30% 13%);
   --status-en-progreso-fg:    hsl(38 80% 75%);
 
   --status-bloqueado:         hsl(0 60% 58%);
-  --status-bloqueado-bg:      hsl(0 35% 20%);
+  --status-bloqueado-bg:      hsl(0 35% 14%);
   --status-bloqueado-fg:      hsl(0 70% 80%);
 
   --status-completado:        hsl(142 40% 48%);
-  --status-completado-bg:     hsl(142 22% 16%);
+  --status-completado-bg:     hsl(142 22% 11%);
   --status-completado-fg:     hsl(142 50% 76%);
 
   --node-backlog:    var(--status-backlog);
