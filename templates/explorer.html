@@ -57,10 +57,9 @@
         <span id="nip-percent" class="node-info-value ml-2"></span>
       </div>
       <button id="nip-detail-btn"
-              hx-target="#modal-content"
-              hx-swap="innerHTML"
+              onclick="openNodeEdit()"
               class="nip-open-btn">
-        Ver detalle completo →
+        Ver / Editar →
       </button>
     </div>
   </div>
@@ -265,7 +264,9 @@
   function hideTooltip() { tooltip.style.display = 'none'; }
 
   // ─── Node panel ─────────────────────────────────────────────────────────────
+  let _currentNodeId = null;
   function openNodePanel(d) {
+    _currentNodeId = d.id;
     document.getElementById('nip-id').textContent = d.id;
     document.getElementById('nip-name').textContent = d.name;
     document.getElementById('nip-status').textContent = d.status;
@@ -273,11 +274,15 @@
     document.getElementById('nip-owner').textContent = d.owner || '—';
     document.getElementById('nip-percent').textContent = d.percent + '%';
     document.getElementById('nip-bar').style.width = d.percent + '%';
-    const btn = document.getElementById('nip-detail-btn');
-    btn.setAttribute('hx-get', `/projects/${d.id}`);
-    htmx.process(btn);
     document.getElementById('node-info-panel').classList.remove('hidden');
   }
+  window.openNodeEdit = function() {
+    if (_currentNodeId === null) return;
+    htmx.ajax('GET', `/partials/project-form?id=${_currentNodeId}`, {
+      target: '#modal-content',
+      swap: 'innerHTML'
+    });
+  };
   window.closeNodePanel = function() {
     document.getElementById('node-info-panel').classList.add('hidden');
   };
