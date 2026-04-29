@@ -166,13 +166,19 @@ def partial_project_table(
     priority: str = "",
     assigned_user_id: str = "",
     tag_id: str = "",
+    show_completed: str = "",
 ):
-    projects = db.get_all_projects(
+    show_completed_bool = show_completed.lower() in {"1", "true", "on"}
+    base_args = (
         status or None,
         priority or None,
         _parse_int(assigned_user_id),
         _parse_int(tag_id),
     )
+    if show_completed_bool:
+        projects = db.get_all_projects(*base_args)
+    else:
+        projects = db.get_all_projects(*base_args, exclude_status="Completado")
     return templates.TemplateResponse(
         request,
         "partials/project_table.html",
