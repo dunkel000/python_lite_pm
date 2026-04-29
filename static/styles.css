@@ -379,6 +379,42 @@ body::before {
   opacity: 0.85;
 }
 
+/* Gantt hover tooltip */
+.gantt-tooltip {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  background-color: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  font-size: 11px;
+  line-height: 1.5;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  max-width: 220px;
+  white-space: nowrap;
+}
+
+.gantt-tooltip-title {
+  font-weight: 700;
+  font-size: 12px;
+  margin-bottom: 4px;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.gantt-tooltip-row {
+  display: flex;
+  gap: 6px;
+  justify-content: space-between;
+}
+
+.gantt-tooltip-label {
+  color: hsl(var(--muted-foreground));
+  font-weight: 500;
+}
+
 /* Progress overlay inside bar */
 .gantt-bar-progress {
   position: absolute;

@@ -1,5 +1,8 @@
 {% set num_weeks = weeks | length %}
 
+<!-- Gantt tooltip -->
+<div id="gantt-tooltip" class="gantt-tooltip" style="display:none;"></div>
+
 <div class="overflow-x-auto">
   <div class="gantt-grid border-l border-border" style="grid-template-columns: 220px repeat({{ num_weeks }}, minmax(80px, 1fr)); min-width: {{ 220 + num_weeks * 80 }}px;">
 
@@ -40,8 +43,16 @@
       <!-- Gantt bar -->
       {% if p.col_start and p.col_span > 0 %}
       <div class="gantt-bar gantt-bar-{{ p.status | replace(' ', '-') | lower }} active:scale-[0.98] transition-transform"
-           style="grid-column: {{ p.col_start }} / span {{ p.col_span }}; grid-row: {{ row }}; align-self: center; margin: 0 4px; height: 24px;"
-           title="{{ p.name }} | {{ p.status }} | {{ p.percent_complete }}%">
+           style="grid-column: {{ p.col_start }} / span {{ p.col_span }}; grid-row: {{ row }}; align-self: center; margin: 0 4px; height: 24px; cursor: pointer;"
+           hx-get="/partials/project-form?id={{ p.id }}"
+           hx-target="#modal-content"
+           data-name="{{ p.name }}"
+           data-status="{{ p.status }}"
+           data-priority="{{ p.priority }}"
+           data-start="{{ p.start_date or '' }}"
+           data-end="{{ p.end_date or '' }}"
+           data-progress="{{ p.percent_complete }}"
+           data-user="{{ p.assigned_user_name or '' }}">
         <div class="gantt-bar-progress" style="width: {{ p.percent_complete }}%"></div>
         <span class="gantt-bar-label font-bold tracking-tight px-2">{{ p.name }}</span>
       </div>
@@ -57,3 +68,64 @@
 
   </div>
 </div>
+
+<script>
+(function () {
+  const tooltip = document.getElementById('gantt-tooltip');
+
+  function showTooltip(bar, e) {
+    const name     = bar.dataset.name;
+    const status   = bar.dataset.status;
+    const priority = bar.dataset.priority;
+    const start    = bar.dataset.start;
+    const end      = bar.dataset.end;
+    const progress = bar.dataset.progress;
+    const user     = bar.dataset.user;
+
+    let html = `<div class="gantt-tooltip-title">${name}</div>`;
+    html += `<div class="gantt-tooltip-row"><span class="gantt-tooltip-label">Estado</span><span>${status}</span></div>`;
+    html += `<div class="gantt-tooltip-row"><span class="gantt-tooltip-label">Prioridad</span><span>${priority}</span></div>`;
+    if (start) html += `<div class="gantt-tooltip-row"><span class="gantt-tooltip-label">Inicio</span><span>${start}</span></div>`;
+    if (end)   html += `<div class="gantt-tooltip-row"><span class="gantt-tooltip-label">Fin</span><span>${end}</span></div>`;
+    html += `<div class="gantt-tooltip-row"><span class="gantt-tooltip-label">Avance</span><span>${progress}%</span></div>`;
+    if (user)  html += `<div class="gantt-tooltip-row"><span class="gantt-tooltip-label">Asignado</span><span>${user}</span></div>`;
+
+    tooltip.innerHTML = html;
+    tooltip.style.display = 'block';
+    positionTooltip(e);
+  }
+
+  function positionTooltip(e) {
+    const offset = 14;
+    let x = e.clientX + offset;
+    let y = e.clientY + offset;
+    const tw = tooltip.offsetWidth;
+    const th = tooltip.offsetHeight;
+    if (x + tw > window.innerWidth  - 8) x = e.clientX - tw - offset;
+    if (y + th > window.innerHeight - 8) y = e.clientY - th - offset;
+    tooltip.style.left = x + 'px';
+    tooltip.style.top  = y + 'px';
+  }
+
+  function hideTooltip() {
+    tooltip.style.display = 'none';
+  }
+
+  function attachBarListeners() {
+    document.querySelectorAll('.gantt-bar[data-name]').forEach(function (bar) {
+      if (bar._ganttListeners) return;
+      bar._ganttListeners = true;
+      bar.addEventListener('mouseenter', function (e) { showTooltip(bar, e); });
+      bar.addEventListener('mousemove',  function (e) { positionTooltip(e); });
+      bar.addEventListener('mouseleave', hideTooltip);
+    });
+  }
+
+  attachBarListeners();
+
+  // Re-attach after HTMX swaps (filter changes reload the chart)
+  document.body.addEventListener('htmx:afterSwap', function (evt) {
+    if (evt.detail.target.id === 'gantt-container') attachBarListeners();
+  });
+})();
+</script>
