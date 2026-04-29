@@ -29,6 +29,20 @@ python main.py
 
 El servidor levanta en http://localhost:8000
 
+### Desarrollo local (variables mínimas)
+
+Para evitar problemas de autenticación/CSRF en entorno local por **HTTP** (`http://localhost`), define al menos:
+
+```env
+# Mantener el modo esperado para red interna
+PT_DEPLOYMENT_MODE=intranet
+
+# IMPORTANTE en local sin TLS
+PT_SECURE_COOKIES=false
+```
+
+En producción se debe mantener `PT_SECURE_COOKIES=true` junto con HTTPS/TLS.
+
 ## Seguridad y modo de despliegue (nuevo)
 
 La app ahora arranca en **modo seguro por defecto** para escenarios **internet-exposed**:

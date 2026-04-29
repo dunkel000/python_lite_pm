@@ -1,4 +1,5 @@
 import urllib.parse
+import logging
 
 import uvicorn
 from fastapi import FastAPI, Form, Request
@@ -23,6 +24,8 @@ from security import (
 
 app = FastAPI(title="Project Tracker — Activos Privados")
 templates = Jinja2Templates(directory="templates")
+
+logger = logging.getLogger("security")
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -49,6 +52,15 @@ async def security_middleware(request: Request, call_next):
     if is_htmx_write:
         submitted_token = request.headers.get("x-csrf-token", "")
         if not validate_csrf(request, submitted_token):
+            has_csrf_cookie = bool(request.cookies.get(CSRF_COOKIE_NAME))
+            has_csrf_header = bool(submitted_token)
+            logger.warning(
+                "CSRF validation failed for %s %s (pm_csrf cookie present=%s, x-csrf-token header present=%s)",
+                method,
+                path,
+                has_csrf_cookie,
+                has_csrf_header,
+            )
             return HTMLResponse("<div class='p-4 text-sm text-red-600'>CSRF inválido.</div>", status_code=403)
 
     response = await call_next(request)

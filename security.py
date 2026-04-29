@@ -23,6 +23,8 @@ class SecuritySettings:
 
 def _load_settings() -> SecuritySettings:
     deployment_mode = os.getenv("PT_DEPLOYMENT_MODE", "internet").strip().lower()
+    # Seguridad por defecto: cookies solo por HTTPS.
+    # Para desarrollo local en http://localhost usar PT_SECURE_COOKIES=false
     secure_cookies = os.getenv("PT_SECURE_COOKIES", "true").strip().lower() == "true"
 
     secret_key = os.getenv("PT_SECRET_KEY") or secrets.token_urlsafe(48)
