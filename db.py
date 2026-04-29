@@ -486,6 +486,7 @@ def get_all_projects(
     priority: str = None,
     assigned_user_id: int = None,
     tag_id: int = None,
+    exclude_status: str = None,
 ):
     conn = get_conn()
     query = _PROJECT_SELECT + " WHERE 1=1"
@@ -505,6 +506,9 @@ def get_all_projects(
             "WHERE pt.project_id = p.id AND pt.tag_id = ?)"
         )
         params.append(tag_id)
+    if exclude_status:
+        query += " AND p.status != ?"
+        params.append(exclude_status)
     query += " ORDER BY p.created_at DESC"
     rows = conn.execute(query, params).fetchall()
     projects = _attach_tags_to_projects(conn, [dict(r) for r in rows])
