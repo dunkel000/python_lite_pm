@@ -24,20 +24,12 @@ from security import (
 app = FastAPI(title="Project Tracker — Activos Privados")
 templates = Jinja2Templates(directory="templates")
 
-app.add_middleware(
-    SessionMiddleware,
-    secret_key=SETTINGS.secret_key,
-    same_site="strict",
-    https_only=SETTINGS.secure_cookies,
-    session_cookie="pm_session",
-)
-
 app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/ui", StaticFiles(directory="ui_kits"), name="ui")
 
 app.include_router(projects.router)
 app.include_router(decisions.router)
 app.include_router(users.router)
-
 
 @app.middleware("http")
 async def security_middleware(request: Request, call_next):
@@ -75,6 +67,13 @@ async def security_middleware(request: Request, call_next):
 
     return response
 
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SETTINGS.secret_key,
+    same_site="strict",
+    https_only=SETTINGS.secure_cookies,
+    session_cookie="pm_session",
+)
 
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request, next: str = "/"):
