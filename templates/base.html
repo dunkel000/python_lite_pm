@@ -243,6 +243,15 @@
         openModal();
       }
     });
+
+    // HTMX: inject CSRF token as header on every mutating request
+    document.body.addEventListener('htmx:configRequest', function(evt) {
+      const method = (evt.detail.verb || '').toUpperCase();
+      if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+        const pair = document.cookie.split('; ').find(function(row) { return row.startsWith('pm_csrf='); });
+        if (pair) evt.detail.headers['X-CSRF-Token'] = pair.split('=').slice(1).join('=');
+      }
+    });
   </script>
 
   {% block scripts %}{% endblock %}
