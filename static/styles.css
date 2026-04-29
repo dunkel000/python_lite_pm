@@ -616,6 +616,24 @@ tr { transition: background-color 0.1s ease; }
   color: hsl(var(--background));
 }
 
+.exp-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+.exp-btn-group .exp-btn {
+  border-radius: 0;
+  border-right-width: 0;
+  padding: 5px 9px;
+}
+.exp-btn-group .exp-btn:first-child {
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+.exp-btn-group .exp-btn:last-child {
+  border-radius: 0 var(--radius) var(--radius) 0;
+  border-right-width: 1px;
+}
+
 .exp-select {
   padding: 5px 10px;
   border-radius: var(--radius);

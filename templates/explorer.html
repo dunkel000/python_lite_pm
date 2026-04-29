@@ -16,14 +16,25 @@
       <span class="legend-dot" style="background:var(--node-completado)"></span><span>Completado</span>
     </div>
     <div class="explorer-actions">
-      <button id="btn-reset-zoom" class="exp-btn" title="Centrar vista">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
-        Centrar
-      </button>
+      <div class="exp-btn-group">
+        <button id="btn-zoom-in" class="exp-btn" title="Acercar">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16zm0-5v-6m-3 3h6"/></svg>
+        </button>
+        <button id="btn-zoom-out" class="exp-btn" title="Alejar">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16zm-3 3h6"/></svg>
+        </button>
+        <button id="btn-reset-zoom" class="exp-btn" title="Centrar vista">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+          Centrar
+        </button>
+      </div>
       <button id="btn-toggle-labels" class="exp-btn" title="Mostrar/ocultar etiquetas">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
         Etiquetas
       </button>
+      <select id="filter-user-graph" class="exp-select">
+        <option value="">Todos los usuarios</option>
+      </select>
       <select id="filter-status-graph" class="exp-select">
         <option value="">Todos los estados</option>
         <option value="Backlog">Backlog</option>
@@ -85,6 +96,7 @@
   let allData = { nodes: [], links: [] };
   let showLabels = true;
   let currentFilter = '';
+  let currentUserFilter = '';
   let simulation, svg, zoomBehavior, linkSel, nodeSel, labelSel;
 
   const tooltip = document.getElementById('graph-tooltip');
@@ -93,7 +105,25 @@
   async function loadGraph() {
     const res = await fetch('/api/graph-data');
     allData = await res.json();
+    populateUserFilter(allData.nodes);
     buildGraph(allData);
+  }
+
+  function populateUserFilter(nodes) {
+    const sel = document.getElementById('filter-user-graph');
+    const users = new Map();
+    nodes.forEach(n => {
+      if (n.assigned_user_id && !users.has(n.assigned_user_id)) {
+        users.set(n.assigned_user_id, n.assigned_user_name || n.assigned_user_email || n.assigned_user_id);
+      }
+    });
+    sel.querySelectorAll('option:not([value=""])').forEach(o => o.remove());
+    users.forEach((name, id) => {
+      const opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = name;
+      sel.appendChild(opt);
+    });
   }
 
   // ─── Build ──────────────────────────────────────────────────────────────────
@@ -129,9 +159,11 @@
       .attr('fill', 'var(--graph-link)');
 
     // Filter nodes
-    const filtered = currentFilter
-      ? data.nodes.filter(n => n.status === currentFilter)
-      : data.nodes;
+    const filtered = data.nodes.filter(n => {
+      const statusOk = !currentFilter || n.status === currentFilter;
+      const userOk   = !currentUserFilter || String(n.assigned_user_id) === String(currentUserFilter);
+      return statusOk && userOk;
+    });
     const filteredIds = new Set(filtered.map(n => n.id));
     const filteredLinks = data.links.filter(
       l => filteredIds.has(l.source.id || l.source) && filteredIds.has(l.target.id || l.target)
@@ -288,6 +320,14 @@
   };
 
   // ─── Controls ───────────────────────────────────────────────────────────────
+  document.getElementById('btn-zoom-in').addEventListener('click', () => {
+    svg.transition().duration(300).call(zoomBehavior.scaleBy, 1.4);
+  });
+
+  document.getElementById('btn-zoom-out').addEventListener('click', () => {
+    svg.transition().duration(300).call(zoomBehavior.scaleBy, 1 / 1.4);
+  });
+
   document.getElementById('btn-reset-zoom').addEventListener('click', () => {
     svg.transition().duration(600).call(zoomBehavior.transform, d3.zoomIdentity);
   });
@@ -295,6 +335,11 @@
   document.getElementById('btn-toggle-labels').addEventListener('click', () => {
     showLabels = !showLabels;
     labelSel && labelSel.style('display', showLabels ? null : 'none');
+  });
+
+  document.getElementById('filter-user-graph').addEventListener('change', function() {
+    currentUserFilter = this.value;
+    buildGraph(allData);
   });
 
   document.getElementById('filter-status-graph').addEventListener('change', function() {
