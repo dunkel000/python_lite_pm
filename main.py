@@ -24,14 +24,6 @@ from security import (
 app = FastAPI(title="Project Tracker — Activos Privados")
 templates = Jinja2Templates(directory="templates")
 
-app.add_middleware(
-    SessionMiddleware,
-    secret_key=SETTINGS.secret_key,
-    same_site="strict",
-    https_only=SETTINGS.secure_cookies,
-    session_cookie="pm_session",
-)
-
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 app.include_router(projects.router)
@@ -50,14 +42,12 @@ async def security_middleware(request: Request, call_next):
             return RedirectResponse(url=f"/login?next={next_param}", status_code=303)
         return JSONResponse({"detail": "Authentication required"}, status_code=401)
 
-    is_htmx_form_write = (
+    is_htmx_write = (
         method in {"POST", "PUT", "PATCH", "DELETE"}
         and request.headers.get("hx-request") == "true"
-        and request.headers.get("content-type", "").startswith(("application/x-www-form-urlencoded", "multipart/form-data"))
     )
-    if is_htmx_form_write:
-        form = await request.form()
-        submitted_token = form.get("csrf_token") or request.headers.get("x-csrf-token")
+    if is_htmx_write:
+        submitted_token = request.headers.get("x-csrf-token", "")
         if not validate_csrf(request, submitted_token):
             return HTMLResponse("<div class='p-4 text-sm text-red-600'>CSRF inválido.</div>", status_code=403)
 
@@ -74,6 +64,15 @@ async def security_middleware(request: Request, call_next):
         )
 
     return response
+
+
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SETTINGS.secret_key,
+    same_site="strict",
+    https_only=SETTINGS.secure_cookies,
+    session_cookie="pm_session",
+)
 
 
 @app.get("/login", response_class=HTMLResponse)

@@ -104,7 +104,6 @@
           hx-swap="innerHTML"
           hx-on::after-request="this.reset()"
           class="bg-muted/30 border border-border rounded-lg p-5 space-y-4">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
       <p class="text-xs font-bold text-foreground uppercase tracking-wider">Registrar nueva decisión</p>
       <div class="space-y-3">
         <input type="text" name="decision" required
