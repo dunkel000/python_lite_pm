@@ -105,7 +105,7 @@ def _parse_iso_date(value: str):
 
 @router.get("/", response_class=HTMLResponse)
 def dashboard(request: Request):
-    projects = db.get_all_projects()
+    projects = db.get_all_projects(exclude_status="Completado")
     stats = db.get_stats()
     users_list = db.list_users()
     tags_list = db.list_tags()
