@@ -49,7 +49,7 @@ async def security_middleware(request: Request, call_next):
         method in {"POST", "PUT", "PATCH", "DELETE"}
         and request.headers.get("hx-request") == "true"
     )
-    if is_htmx_write:
+    if SETTINGS.auth_enabled and is_htmx_write:
         submitted_token = request.headers.get("x-csrf-token", "")
         if not validate_csrf(request, submitted_token):
             has_csrf_cookie = bool(request.cookies.get(CSRF_COOKIE_NAME))
@@ -89,6 +89,8 @@ app.add_middleware(
 
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request, next: str = "/"):
+    if not SETTINGS.auth_enabled:
+        return RedirectResponse(url=next or "/", status_code=303)
     if is_authenticated(request):
         return RedirectResponse(url=next or "/", status_code=303)
     return templates.TemplateResponse(
@@ -103,6 +105,8 @@ def login_page(request: Request, next: str = "/"):
 
 @app.post("/login", response_class=HTMLResponse)
 def login_submit(request: Request, username: str = Form(...), password: str = Form(...), next: str = Form("/")):
+    if not SETTINGS.auth_enabled:
+        return RedirectResponse(url=next or "/", status_code=303)
     if not check_login_credentials(username, password):
         return templates.TemplateResponse(
             request,
@@ -130,6 +134,8 @@ def login_submit(request: Request, username: str = Form(...), password: str = Fo
 
 @app.post("/logout")
 def logout(request: Request):
+    if not SETTINGS.auth_enabled:
+        return RedirectResponse(url="/", status_code=303)
     request.session.clear()
     response = RedirectResponse(url="/login", status_code=303)
     response.delete_cookie(CSRF_COOKIE_NAME)
@@ -142,7 +148,10 @@ def startup():
     if SETTINGS.deployment_mode not in {"intranet", "internet"}:
         print(f"[security] PT_DEPLOYMENT_MODE='{SETTINGS.deployment_mode}' no reconocido; usar 'intranet' o 'internet'.")
 
-    print("[security] Auth enabled for /projects*, /users*, /projects/{project_id}/decisions* and mutating /partials/* endpoints.")
+    if SETTINGS.auth_enabled:
+        print("[security] Auth enabled for /projects*, /users*, /projects/{project_id}/decisions* and mutating /partials/* endpoints.")
+    else:
+        print("[security] Auth disabled (PT_AUTH_ENABLED=false); app is open without login.")
     print("[security] Login user:", SETTINGS.auth_user)
     print("[security] Login password:", SETTINGS.auth_password)
     if SETTINGS.auth_token:
