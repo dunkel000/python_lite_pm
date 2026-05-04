@@ -238,11 +238,25 @@ def _migration_v4(conn):
     conn.commit()
 
 
+def _migration_v5(conn):
+    project_cols = {row["name"] for row in conn.execute("PRAGMA table_info('projects')").fetchall()}
+    if "parent_project_id" not in project_cols:
+        conn.execute(
+            "ALTER TABLE projects ADD COLUMN parent_project_id TEXT "
+            "REFERENCES projects(id) ON DELETE SET NULL"
+        )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_projects_parent_project_id ON projects(parent_project_id)"
+    )
+    conn.commit()
+
+
 _MIGRATIONS = [
     (1, _migration_v1),
     (2, _migration_v2),
     (3, _migration_v3),
     (4, _migration_v4),
+    (5, _migration_v5),
 ]
 
 
@@ -434,10 +448,43 @@ def _seed_if_empty(conn):
 # ── Projects ──────────────────────────────────────────────────────────────────
 
 _PROJECT_SELECT = """
-    SELECT p.*, u.name AS assigned_user_name, u.email AS assigned_user_email
+    SELECT p.*, u.name AS assigned_user_name, u.email AS assigned_user_email,
+           parent.name AS parent_project_name
     FROM projects p
     LEFT JOIN users u ON u.id = p.assigned_user_id
+    LEFT JOIN projects parent ON parent.id = p.parent_project_id
 """
+
+
+def _apply_project_hierarchy(projects: list[dict]) -> list[dict]:
+    by_id = {p["id"]: p for p in projects}
+    children_by_parent = {}
+    for project in projects:
+        parent_id = project.get("parent_project_id")
+        if parent_id:
+            children_by_parent.setdefault(parent_id, []).append(project)
+
+    def depth_of(project_id: str, seen: set[str] | None = None) -> int:
+        seen = seen or set()
+        if project_id in seen:
+            return 0
+        seen.add(project_id)
+        p = by_id.get(project_id)
+        parent_id = p.get("parent_project_id") if p else None
+        if not parent_id or parent_id not in by_id:
+            return 0
+        return 1 + depth_of(parent_id, seen)
+
+    for p in projects:
+        children = children_by_parent.get(p["id"], [])
+        p["children_count"] = len(children)
+        p["depth"] = depth_of(p["id"])
+        p["effective_percent_complete"] = (
+            round(sum(child.get("percent_complete", 0) for child in children) / len(children))
+            if children
+            else p.get("percent_complete", 0)
+        )
+    return projects
 
 
 def _attach_tags(conn, project: dict) -> dict:
@@ -511,7 +558,7 @@ def get_all_projects(
         params.append(exclude_status)
     query += " ORDER BY p.created_at DESC"
     rows = conn.execute(query, params).fetchall()
-    projects = _attach_tags_to_projects(conn, [dict(r) for r in rows])
+    projects = _apply_project_hierarchy(_attach_tags_to_projects(conn, [dict(r) for r in rows]))
     conn.close()
     return projects
 
@@ -532,9 +579,9 @@ def create_project(data: dict):
     with conn:
         conn.execute(
             """INSERT INTO projects (id, name, description, priority, status,
-               assigned_user_id, start_date, end_date, percent_complete)
+               assigned_user_id, parent_project_id, start_date, end_date, percent_complete)
                VALUES (:id, :name, :description, :priority, :status,
-               :assigned_user_id, :start_date, :end_date, :percent_complete)""",
+               :assigned_user_id, :parent_project_id, :start_date, :end_date, :percent_complete)""",
             data,
         )
         conn.execute(
@@ -555,6 +602,7 @@ def update_project(project_id: str, data: dict):
         cur = conn.execute(
             """UPDATE projects SET name=:name, description=:description, priority=:priority,
                status=:status, assigned_user_id=:assigned_user_id,
+               parent_project_id=:parent_project_id,
                start_date=:start_date, end_date=:end_date,
                percent_complete=:percent_complete, updated_at=datetime('now')
                WHERE id=:id""",

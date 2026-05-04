@@ -16,7 +16,10 @@
       {% for p in projects %}
       <tr class="hover:bg-muted/30 transition-colors group">
         <td class="px-6 py-4">
-          <div class="flex items-baseline gap-2">
+          <div class="flex items-baseline gap-2" style="padding-left: {{ (p.depth or 0) * 1.25 }}rem;">
+            {% if (p.depth or 0) > 0 %}
+            <span class="text-muted-foreground">└─</span>
+            {% endif %}
             <span class="text-xs font-mono text-muted-foreground uppercase tracking-tighter">{{ p.id }}</span>
             <button class="text-sm font-semibold text-foreground group-hover:text-primary transition-colors text-left"
                     hx-get="/projects/{{ p.id }}"
@@ -64,10 +67,13 @@
         <td class="px-6 py-4">
           <div class="flex items-center gap-3">
             <div class="flex-1 h-1.5 w-24 bg-secondary rounded-full overflow-hidden border border-border/50">
-              <div class="h-full bg-primary rounded-full" style="width: {{ p.percent_complete }}%"></div>
+              <div class="h-full bg-primary rounded-full" style="width: {{ p.effective_percent_complete }}%"></div>
             </div>
-            <span class="text-[10px] font-bold text-muted-foreground w-6 text-right">{{ p.percent_complete }}%</span>
+            <span class="text-[10px] font-bold text-muted-foreground w-6 text-right">{{ p.effective_percent_complete }}%</span>
           </div>
+          {% if p.children_count %}
+          <div class="text-[10px] text-muted-foreground mt-1">{{ p.children_count }} subproyecto(s)</div>
+          {% endif %}
         </td>
         <td class="px-6 py-4 text-xs font-medium text-muted-foreground">
           {% if p.end_date %}
