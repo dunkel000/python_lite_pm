@@ -53,6 +53,20 @@
           ¿Falta alguien? Créalo en <a href="/users" class="text-primary hover:underline">Usuarios</a>.
         </p>
       </div>
+      <div>
+        <label class="block text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Proyecto padre</label>
+        <select name="parent_project_id"
+                class="w-full text-sm border border-input rounded-md px-3 py-2 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 transition-all">
+          <option value="">Sin padre</option>
+          {% for parent in projects %}
+          {% if (not is_edit) or parent.id != project.id %}
+          <option value="{{ parent.id }}" {% if is_edit and project.parent_project_id == parent.id %}selected{% endif %}>
+            {{ parent.id }} — {{ parent.name }}
+          </option>
+          {% endif %}
+          {% endfor %}
+        </select>
+      </div>
     </div>
 
     <!-- Name -->

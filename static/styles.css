@@ -667,6 +667,11 @@ tr { transition: background-color 0.1s ease; }
   stroke-opacity: 0.6;
 }
 
+.graph-link-hierarchy {
+  stroke-dasharray: 5 4;
+  stroke-opacity: 0.9;
+}
+
 .graph-node { cursor: pointer; }
 .graph-node:hover .node-circle { filter: brightness(1.15); }
 

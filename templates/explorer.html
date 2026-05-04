@@ -185,6 +185,7 @@
       .data(links)
       .join('line')
       .attr('class', 'graph-link')
+      .classed('graph-link-hierarchy', d => d.type === 'hierarchy')
       .attr('marker-end', 'url(#arrow)');
 
     // Node groups

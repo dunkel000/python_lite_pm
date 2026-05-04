@@ -211,6 +211,7 @@ def partial_project_form(request: Request, id: str = ""):
             project=project,
             next_id=next_id,
             users=db.list_users(),
+            projects=db.get_all_projects(),
             current_tags=current_tags,
         ),
     )
@@ -271,6 +272,7 @@ def create_project(
     priority: str = Form("Media"),
     status: str = Form("Backlog"),
     assigned_user_id: str = Form(""),
+    parent_project_id: str = Form(""),
     tags: str = Form(""),
     start_date: str = Form(""),
     end_date: str = Form(""),
@@ -311,6 +313,12 @@ def create_project(
     if parsed_assigned_user_id is not None and not db.get_user(parsed_assigned_user_id):
         return _error_fragment("El usuario asignado no es válido o ya no existe.")
 
+    normalized_parent_project_id = parent_project_id.strip() or None
+    if normalized_parent_project_id and not db.get_project(normalized_parent_project_id):
+        return _error_fragment("El proyecto padre seleccionado no existe.")
+    if normalized_parent_project_id and normalized_parent_project_id == project_id:
+        return _error_fragment("Un proyecto no puede ser su propio padre.")
+
     project_data = {
         "id": project_id,
         "name": project_name,
@@ -318,6 +326,7 @@ def create_project(
         "priority": priority,
         "status": status,
         "assigned_user_id": parsed_assigned_user_id,
+        "parent_project_id": normalized_parent_project_id,
         "start_date": start_date or None,
         "end_date": end_date or None,
         "percent_complete": parsed_percent_complete,
@@ -352,6 +361,7 @@ def update_project(
     priority: str = Form("Media"),
     status: str = Form("Backlog"),
     assigned_user_id: str = Form(""),
+    parent_project_id: str = Form(""),
     tags: str = Form(""),
     start_date: str = Form(""),
     end_date: str = Form(""),
@@ -389,6 +399,12 @@ def update_project(
     if parsed_assigned_user_id is not None and not db.get_user(parsed_assigned_user_id):
         return _error_fragment("El usuario asignado no es válido o ya no existe.")
 
+    normalized_parent_project_id = parent_project_id.strip() or None
+    if normalized_parent_project_id and not db.get_project(normalized_parent_project_id):
+        return _error_fragment("El proyecto padre seleccionado no existe.")
+    if normalized_parent_project_id and normalized_parent_project_id == project_id:
+        return _error_fragment("Un proyecto no puede ser su propio padre.")
+
     try:
         db.update_project(
             project_id,
@@ -398,6 +414,7 @@ def update_project(
                 "priority": priority,
                 "status": status,
                 "assigned_user_id": parsed_assigned_user_id,
+                "parent_project_id": normalized_parent_project_id,
                 "start_date": start_date or None,
                 "end_date": end_date or None,
                 "percent_complete": parsed_percent_complete,
@@ -463,7 +480,15 @@ def graph_data():
             "assigned_user_name": p.get("assigned_user_name") or "",
             "assigned_user_email": p.get("assigned_user_email") or "",
             "percent": p["percent_complete"],
+            "effective_percent": p.get("effective_percent_complete", p["percent_complete"]),
         })
+
+        if p.get("parent_project_id"):
+            links.append({
+                "source": p["parent_project_id"],
+                "target": p["id"],
+                "type": "hierarchy",
+            })
 
     user_map: dict = {}
     user_name_by_id: dict = {}
@@ -485,6 +510,7 @@ def graph_data():
                         "target": ids[j],
                         "user_id": uid,
                         "user_name": user_name_by_id.get(uid, ""),
+                        "type": "assignee",
                     })
 
     return JSONResponse({"nodes": nodes, "links": links})
