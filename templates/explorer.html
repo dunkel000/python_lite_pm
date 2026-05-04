@@ -184,8 +184,9 @@
       .selectAll('line')
       .data(links)
       .join('line')
-      .attr('class', d => d.line_type === 'markdown' ? 'graph-link graph-link-markdown' : 'graph-link')
-      .attr('marker-end', d => d.line_type === 'markdown' ? null : 'url(#arrow)');
+      .attr('class', 'graph-link')
+      .classed('graph-link-hierarchy', d => d.type === 'hierarchy')
+      .attr('marker-end', 'url(#arrow)');
 
     // Node groups
     nodeSel = g.append('g')
