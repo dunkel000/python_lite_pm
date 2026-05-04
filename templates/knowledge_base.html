@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Knowledge Base{% endblock %}
+{% block header_title %}Knowledge Base{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
+  <div class="lg:col-span-1 border border-border bg-card p-4 overflow-auto">
+    <h2 class="font-semibold mb-3">Markdown por proyecto</h2>
+    <div id="kb-list" class="space-y-2 text-sm"></div>
+  </div>
+  <div class="lg:col-span-2 border border-border bg-card p-4 flex flex-col min-h-[65vh]">
+    <div class="flex items-center justify-between mb-3">
+      <h3 id="kb-title" class="font-semibold">Selecciona un markdown</h3>
+      <button id="kb-save" class="px-3 py-1.5 border border-border text-sm" disabled>Guardar</button>
+    </div>
+    <textarea id="kb-editor" class="w-full flex-1 border border-input bg-background p-3 font-mono text-sm" placeholder="Contenido markdown..."></textarea>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  let currentId = null;
+  const listEl = document.getElementById('kb-list');
+  const titleEl = document.getElementById('kb-title');
+  const editorEl = document.getElementById('kb-editor');
+  const saveBtn = document.getElementById('kb-save');
+
+  const params = new URLSearchParams(window.location.search);
+  async function loadList() {
+    const res = await fetch('/api/markdowns');
+    const items = await res.json();
+    listEl.innerHTML = items.map(i => `<button class="kb-item w-full text-left p-2 border border-border hover:bg-accent" data-id="${i.id}"><div class="font-medium">${i.title}</div><div class="text-xs text-muted-foreground">Proyecto: ${i.project_id}</div></button>`).join('') || '<p class="text-muted-foreground">No hay markdowns.</p>';
+    const buttons = listEl.querySelectorAll('.kb-item');
+    buttons.forEach(btn => btn.addEventListener('click', () => openMarkdown(btn.dataset.id)));
+    const preselect = params.get('md');
+    if (preselect) {
+      const b = [...buttons].find(x => String(x.dataset.id) === String(preselect));
+      if (b) openMarkdown(preselect);
+    }
+  }
+
+  async function openMarkdown(id) {
+    const res = await fetch(`/api/markdowns/${id}`);
+    if (!res.ok) return;
+    const md = await res.json();
+    currentId = md.id;
+    titleEl.textContent = `${md.title} (${md.project_id})`;
+    editorEl.value = md.content || '';
+    saveBtn.disabled = false;
+  }
+
+  saveBtn.addEventListener('click', async () => {
+    if (!currentId) return;
+    await fetch(`/api/markdowns/${currentId}`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({content: editorEl.value})
+    });
+    loadList();
+  });
+
+  loadList();
+})();
+</script>
+{% endblock %}

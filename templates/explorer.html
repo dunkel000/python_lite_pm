@@ -184,8 +184,8 @@
       .selectAll('line')
       .data(links)
       .join('line')
-      .attr('class', 'graph-link')
-      .attr('marker-end', 'url(#arrow)');
+      .attr('class', d => d.line_type === 'markdown' ? 'graph-link graph-link-markdown' : 'graph-link')
+      .attr('marker-end', d => d.line_type === 'markdown' ? null : 'url(#arrow)');
 
     // Node groups
     nodeSel = g.append('g')
@@ -202,20 +202,17 @@
       .on('mousemove', (event) => moveTooltip(event))
       .on('mouseleave', () => hideTooltip());
 
-    // Glow effect circle
-    nodeSel.append('circle')
-      .attr('class', 'node-glow')
-      .attr('r', d => nodeRadius(d) + 6)
-      .attr('fill', d => STATUS_COLOR[d.status] || '#888')
-      .attr('opacity', 0.15);
-
-    // Main circle
-    nodeSel.append('circle')
-      .attr('class', 'node-circle')
-      .attr('r', d => nodeRadius(d))
-      .attr('fill', d => STATUS_COLOR[d.status] || '#888')
-      .attr('stroke', 'var(--graph-node-stroke)')
-      .attr('stroke-width', 2);
+    nodeSel.each(function(d) {
+      const sel = d3.select(this);
+      if (d.node_type === 'markdown') {
+        const r = nodeRadius(d);
+        sel.append('rect').attr('class', 'node-glow').attr('x', -r-4).attr('y', -r-4).attr('width', (r+4)*2).attr('height', (r+4)*2).attr('fill', 'hsl(var(--muted-foreground))').attr('opacity', 0.15);
+        sel.append('rect').attr('class', 'node-circle node-square').attr('x', -r).attr('y', -r).attr('width', r*2).attr('height', r*2).attr('fill', 'hsl(var(--muted))').attr('stroke', 'var(--graph-node-stroke)').attr('stroke-width', 2);
+      } else {
+        sel.append('circle').attr('class', 'node-glow').attr('r', r => nodeRadius(r) + 6).attr('fill', r => STATUS_COLOR[r.status] || '#888').attr('opacity', 0.15);
+        sel.append('circle').attr('class', 'node-circle').attr('r', r => nodeRadius(r)).attr('fill', r => STATUS_COLOR[r.status] || '#888').attr('stroke', 'var(--graph-node-stroke)').attr('stroke-width', 2);
+      }
+    });
 
     // Progress ring
     nodeSel.each(function(d) {
@@ -269,6 +266,7 @@
   }
 
   function nodeRadius(d) {
+    if (d.node_type === 'markdown') return 14;
     return 16 + Math.round((d.percent / 100) * 10);
   }
 
@@ -298,6 +296,10 @@
   // ─── Node panel ─────────────────────────────────────────────────────────────
   let _currentNodeId = null;
   function openNodePanel(d) {
+    if (d.node_type === 'markdown' && d.markdown_id) {
+      window.location.href = `/knowledge-base?md=${d.markdown_id}`;
+      return;
+    }
     _currentNodeId = d.id;
     document.getElementById('nip-id').textContent = d.id;
     document.getElementById('nip-name').textContent = d.name;

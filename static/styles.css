@@ -814,3 +814,6 @@ tr { transition: background-color 0.1s ease; }
   background: hsl(var(--foreground));
   color: hsl(var(--background));
 }
+
+.graph-link-markdown { stroke-dasharray: 5 4; stroke: hsl(var(--muted-foreground)); opacity: .9; }
+.node-square { rx: 3; ry: 3; }
