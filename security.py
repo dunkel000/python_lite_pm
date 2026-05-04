@@ -19,10 +19,12 @@ class SecuritySettings:
     auth_token: str
     secret_key: str
     secure_cookies: bool
+    auth_enabled: bool
 
 
 def _load_settings() -> SecuritySettings:
     deployment_mode = os.getenv("PT_DEPLOYMENT_MODE", "internet").strip().lower()
+    auth_enabled = os.getenv("PT_AUTH_ENABLED", "false").strip().lower() == "true"
     # Seguridad por defecto: cookies solo por HTTPS.
     # Para desarrollo local en http://localhost usar PT_SECURE_COOKIES=false
     secure_cookies = os.getenv("PT_SECURE_COOKIES", "true").strip().lower() == "true"
@@ -39,6 +41,7 @@ def _load_settings() -> SecuritySettings:
         auth_token=auth_token,
         secret_key=secret_key,
         secure_cookies=secure_cookies,
+        auth_enabled=auth_enabled,
     )
 
 
@@ -51,6 +54,8 @@ def is_html_request(request: Request) -> bool:
 
 
 def should_require_auth(path: str, method: str) -> bool:
+    if not SETTINGS.auth_enabled:
+        return False
     if path.startswith("/projects"):
         return True
     if path.startswith("/users"):
