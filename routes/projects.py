@@ -462,11 +462,44 @@ def update_status(request: Request, project_id: str, status: str = Form(...)):
     )
 
 
+
+
+@router.get("/knowledge-base", response_class=HTMLResponse)
+def knowledge_base_page(request: Request):
+    return templates.TemplateResponse(
+        request,
+        "knowledge_base.html",
+        _ctx(request, active_page="knowledge_base"),
+    )
+
+
+@router.get("/api/markdowns")
+def list_markdowns(project_id: str = ""):
+    return JSONResponse(db.list_project_markdowns(project_id or None))
+
+
+@router.get("/api/markdowns/{markdown_id}")
+def get_markdown(markdown_id: int):
+    markdown = db.get_project_markdown(markdown_id)
+    if not markdown:
+        return JSONResponse({"detail": "Markdown no encontrado."}, status_code=404)
+    return JSONResponse(markdown)
+
+
+@router.put("/api/markdowns/{markdown_id}")
+def update_markdown(markdown_id: int, payload: dict):
+    content = (payload or {}).get("content", "")
+    markdown = db.update_project_markdown(markdown_id, content)
+    if not markdown:
+        return JSONResponse({"detail": "Markdown no encontrado."}, status_code=404)
+    return JSONResponse(markdown)
+
 # ── Graph API ──────────────────────────────────────────────────────────────────────────
 
 @router.get("/api/graph-data")
 def graph_data():
     projects = db.get_all_projects()
+    markdowns = db.list_project_markdowns()
     nodes = []
     links = []
 
@@ -479,6 +512,7 @@ def graph_data():
             "assigned_user_id": p.get("assigned_user_id"),
             "assigned_user_name": p.get("assigned_user_name") or "",
             "assigned_user_email": p.get("assigned_user_email") or "",
+            "owner": p.get("assigned_user_name") or p.get("owner") or "",
             "percent": p["percent_complete"],
             "effective_percent": p.get("effective_percent_complete", p["percent_complete"]),
         })

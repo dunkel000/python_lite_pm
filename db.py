@@ -355,7 +355,63 @@ def create_project_description_note(project: dict) -> str:
     if not note_path.exists():
         note_path.write_text(_description_note_template(project), encoding="utf-8")
 
-    return str(note_path.resolve())
+    note_path_str = str(note_path.resolve())
+    ensure_project_markdown_record(project['id'], note_path_str, note_path.read_text(encoding='utf-8'))
+    return note_path_str
+
+
+def _markdown_title_from_filename(file_path: str) -> str:
+    stem = Path(file_path).stem
+    return stem.replace('_', ' ').replace('-', ' ').strip() or stem
+
+
+def ensure_project_markdown_record(project_id: str, file_path: str, content: str = '') -> None:
+    conn = get_conn()
+    with conn:
+        conn.execute(
+            """INSERT INTO project_markdowns (project_id, title, file_path, content)
+               VALUES (?, ?, ?, ?)
+               ON CONFLICT(file_path) DO UPDATE SET
+                 project_id=excluded.project_id,
+                 updated_at=datetime('now')""",
+            (project_id, _markdown_title_from_filename(file_path), file_path, content),
+        )
+    conn.close()
+
+
+def list_project_markdowns(project_id: str = None):
+    conn = get_conn()
+    q = "SELECT * FROM project_markdowns"
+    params = []
+    if project_id:
+        q += " WHERE project_id = ?"
+        params.append(project_id)
+    q += " ORDER BY updated_at DESC, id DESC"
+    rows = conn.execute(q, params).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_project_markdown(markdown_id: int):
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM project_markdowns WHERE id = ?", (markdown_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def update_project_markdown(markdown_id: int, content: str):
+    conn = get_conn()
+    with conn:
+        cur = conn.execute(
+            "UPDATE project_markdowns SET content = ?, updated_at = datetime('now') WHERE id = ?",
+            (content, markdown_id),
+        )
+        if cur.rowcount == 0:
+            conn.close()
+            return None
+        row = conn.execute("SELECT * FROM project_markdowns WHERE id = ?", (markdown_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
 
 
 def _seed_if_empty(conn):
